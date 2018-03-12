@@ -363,7 +363,9 @@ CaesarRead {
 				phase = In.ar( phasorBus, 1 ) - Lag2.kr(offset, pitchInertia);
 				phase = Wrap.ar( phase + Lag2.kr( SinOsc.kr(lfoFreq, 0, lfoDepth) ), 0, BufFrames.kr( buf ) );
 				sig = BufRd.ar(2, buf, phase, 0) * Lag.kr(amp, fade) * EnvGen.ar( Env.asr(fade, 1, fade), gate, doneAction:2 );
-				Out.ar( readBus, Balance2.ar( sig[0], sig[1], pan ) );
+				pan = pan + 1; // magic pan solution
+				sig = [ pan.linlin( 1, 2, 1, 0 ) * sig[0], pan.clip( 0, 1 ) * sig[1] ];
+				Out.ar( readBus, sig );
 			}).add;
 		}, \all);
 	}
