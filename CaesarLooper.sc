@@ -12,15 +12,15 @@ CaesarLooper {
 	classvar <syncGroups, <phasorGroup;
 
 	var <maxDelay, <server, <syncMode=\none, <syncGroup, <beats=4, <triplet=false;
-	var <buf, <looperGroup, <phasorBus, <globalInBus, <preAmpBus, <readBus, <fxBus, <globalOutBus;
+	var <buf, <looperGroup, <phasorBus, <globalInBus, <preAmpBus, <readBus, <fxBus, <globalOutBus, <fadeBus;
 	var <phasorSynth, <inputSynth, <reads, <writeSynth, <fxSynth, <mixSynth, <triggerSynth,  triggerOSCFunc;
 	var timeAtRecStart, <isRecording=false, timeAtTapStart, <isTapping=false, <isTriggering=false, <triggerLevel;
 	var <pitchInertia=1.0, <>delayInertiaFadeTime=0.02, <>delayInertia=false, <>digitalMode=false, <freezeMode;
 	var <monoize=0.0, <initialPan=0.0;
 	var <delay=2.0, <masterFeedback=0.5, <dryLevel=1.0, <effectLevel=0.8, <inputLevel=1.0;
-	var <fadeInTime=3.0, <fadeOutTime=3.0, <clearAfterFade=false;
-	var <punchInQuantize=false, <punchOutQuantize=false, <punchOutType=\none, <punchInInputLevel=1.0;
-	var <punchOutInputLevel=0.0, pisil=true, posil=true;
+	var <>fadeInTime=3.0, <>fadeOutTime=3.0, <>fadeOutCompleteAction=\none, <fadeState, <>fadeSynth, <>fadeOSCFunc;
+	var <>punchInQuantize=false, <>punchOutQuantize=false, <>punchOutType=\none, <>punchInInputLevel=1.0;
+	var <>punchOutInputLevel=0.0, <>pisil=true, <>posil=true;
 	var <pitch=0.0, <pitchLFOSpeed=0.0, <pitchLFODepth=0.0;
 
 	*new { arg inputBus, outputBus, maxDelay=30, server;
@@ -46,6 +46,7 @@ CaesarLooper {
 			preAmpBus = Bus.audio(server, 2); // out bus of input synth; write synth reads from this
 			readBus = Bus.audio(server, 2); // out bus for read synths
 			fxBus = Bus.audio(server, 2); // out bus for fx, aka feedbackBus
+			fadeBus = Bus.control(server, 1); // bus for fadeSynth
 			server.sync;
 			phasorSynth = Synth('caesarphasor', ['buf', buf, 'phasorBus', phasorBus, 'pitchInertia', pitchInertia], phasorGroup);
 
@@ -58,6 +59,9 @@ CaesarLooper {
 			writeSynth = Synth('caesarwrite', ['buf', buf, 'preAmpBus', preAmpBus, 'phasorBus', phasorBus], looperGroup, 'addToTail');
 
 			this.addRead(1.0, 1.0, 0);
+
+			fadeBus.set(1);
+			this.fadeState_( FadeDefault.new ); // fade state machine
 		};
 
 	}
@@ -216,13 +220,23 @@ CaesarLooper {
 		buf.zero;
 	}
 
-	fade {}
+	// see FadeState for implementation of state machine
+	fade {
+		fadeState.fade(this);
+	}
 
-	fadeOverride {}
+	fadeOverride {
+		fadeState.fadeOverride(this);
+	}
+
+	fadeState_ { arg newState;
+		fadeState = newState;
+	}
 
 	free {
 		reads.do(_.free);
 		looperGroup.free;
+		fadeBus.free;
 		buf.free;
 		phasorSynth.free;
 		// TODO: clean up shit in syncGroups
@@ -263,9 +277,10 @@ CaesarLooper {
 				Out.ar(fxBus, input * amp);
 			}).add;
 
-			SynthDef('caesarmix', {arg fxBus, globalOutBus=0, effectLevel=0.8, gate=1;
+			SynthDef('caesarmix', {arg fxBus, globalOutBus=0, fadeBus, effectLevel=0.8, gate=1;
 				var input = In.ar(fxBus, 2);
-				var sig = input *  effectLevel * EnvGen.ar(Env.asr(0.01, 1, 0.01), gate, doneAction:2);
+				var fadeEnv = In.kr(fadeBus, 1);
+				var sig = input *  effectLevel * fadeEnv *EnvGen.ar(Env.asr(0.01, 1, 0.01), gate);
 				Out.ar(globalOutBus, sig);
 			}).add;
 
@@ -277,11 +292,128 @@ CaesarLooper {
 				SendTrig.kr(Gate.kr(trig, trig), 235, 1);
 			}).add;
 
+			// issue: emits a ghost trig of 1 at the start of the synth;
+			SynthDef('caesarfadeout', { arg fadeBus, fadeInTime=4, fadeOutTime=4, gate=0;
+				var env = EnvGen.kr(Env.new( [ 1, 0, 1], [ fadeOutTime, fadeInTime], [-4, 4], 1), gate);
+				SendTrig.kr( DetectSilence.kr(env) + Done.kr(env), 101, env);
+				Out.kr(fadeBus, env );
+			}).add;
+
+			SynthDef('caesarfadein', { arg fadeBus, fadeInTime=4, fadeOutTime=4, gate=1;
+				var env = EnvGen.kr(Env.new( [ 0, 1, 0], [ fadeInTime, fadeOutTime], [-4, 4], 1), gate);
+				SendTrig.kr( DetectSilence.kr(env) + Trig.kr(env - 0.999), 101, env);
+				Out.kr(fadeBus, env );
+			}).add;
+
 		}, \all)
 	}
 }
 
-// one CaesarLooper can have multiple
+// state machine for fading in/out etc
+FadeState {
+	*new { ^super.new }
+	fade {}
+	fadeOverride {}
+}
+
+FadeDefault : FadeState {
+	// start fade out
+	fade { arg caesar;
+		caesar.fadeSynth = Synth('caesarfadeout', ['fadeBus', caesar.fadeBus,
+			'fadeInTime', caesar.fadeInTime, 'fadeOutTime', caesar.fadeOutTime, 'gate', 1]);
+		caesar.fadeOSCFunc = OSCFunc({ arg msg;
+			msg.postln;
+			if ( msg[3] == 0 ) {
+				caesar.fadeSynth.free;
+				caesar.fadeOSCFunc.free;
+				caesar.fadeState_( FadeOutCompleted.new(caesar) );
+			} { // this should protect from the ghost event at synth creation time
+				if ( caesar.fadeState.isKindOf(FadeInStarted) ) {
+					caesar.fadeSynth.free;
+					caesar.fadeOSCFunc.free; // can't do one shot here because of ghost trig
+					caesar.fadeState_(FadeDefault.new);
+				}
+			}
+		}, '/tr', caesar.server.addr, nil, [caesar.fadeSynth.nodeID]);
+		caesar.fadeState_(FadeOutStarted.new);
+	}
+
+	fadeOverride {}
+}
+
+FadeOutStarted : FadeState {
+
+	fade { arg caesar;
+		caesar.fadeSynth.set('gate', 0); // fade back in again
+		caesar.fadeState_(FadeInStarted.new);
+	}
+
+	fadeOverride { arg caesar;
+		caesar.fadeBus.set(0);
+		caesar.fadeSynth.free;
+		caesar.fadeOSCFunc.free;
+		caesar.fadeState_( FadeOutCompleted.new(caesar) );
+	}
+}
+
+FadeOutCompleted : FadeState {
+
+	*new { arg caesar; ^super.new.init(caesar) }
+
+	init { arg caesar;
+		if (caesar.fadeOutCompleteAction == \clear ) {
+			caesar.clear;
+		} {
+			if ( caesar.fadeOutCompleteAction == \clear2 ) {
+				caesar.clear;
+				caesar.fadeBus.set(1);
+				caesar.fadeState_( FadeDefault.new );
+			}
+		}
+	}
+
+	fade { arg caesar;
+		caesar.fadeSynth = Synth('caesarfadein', ['fadeBus', caesar.fadeBus,
+			'fadeInTime', caesar.fadeInTime, 'fadeOutTime', caesar.fadeOutTime, 'gate', 1]);
+		caesar.fadeOSCFunc = OSCFunc({ arg msg;
+			msg.postln;
+			if ( msg[3] == 0 ) {
+				caesar.fadeSynth.free;
+				caesar.fadeOSCFunc.free;
+				caesar.fadeState_( FadeOutCompleted.new (caesar) );
+			} { // ghost event should not appear at all with caesarfadein
+				if ( caesar.fadeState.isKindOf(FadeInStarted) ) {
+					caesar.fadeSynth.free;
+					caesar.fadeOSCFunc.free; // TODO one shots
+					caesar.fadeState_(FadeDefault.new);
+				}
+			}
+		}, '/tr', caesar.server.addr, nil, [caesar.fadeSynth.nodeID]);
+		caesar.fadeState_(FadeInStarted.new);
+	}
+
+	fadeOverride { arg caesar;
+		caesar.fadeBus.set(1);
+		caesar.fadeState_( FadeDefault.new );
+	}
+}
+
+FadeInStarted : FadeState {
+
+	fade { arg caesar;
+		caesar.fadeSynth.set('gate', 0); // fade back out again
+		caesar.fadeState_(FadeOutStarted.new);
+	}
+
+	fadeOverride { arg caesar;
+		caesar.fadeBus.set(1);
+		caesar.fadeSynth.free;
+		caesar.fadeOSCFunc.free;
+		caesar.fadeState_( FadeDefault.new );
+	}
+}
+
+// one CaesarLooper can have multiple "read heads"
 CaesarRead {
 	var caesar, <divisor, <level, <pan, <synth;
 
