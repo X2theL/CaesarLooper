@@ -3,7 +3,6 @@
 // - fix double rate resulting in skipped samples when writing
 // - freeze mode
 // - reverse
-// - fading
 // - Saturation
 // - Filter
 // - control delay time by changing beats / triplets (set numBeats after loop is recorded, Then change delay)
@@ -272,9 +271,19 @@ CaesarLooper {
 			}).add;
 
 			// TODO: make swappable, put before caesarmix
-			SynthDef('caesarfx', {arg readBus, fxBus, amp=1.0;
+			SynthDef('caesarfxdummy', {arg readBus, fxBus, amp=1.0;
 				var input = In.ar(readBus, 2);
 				Out.ar(fxBus, input * amp);
+			}).add;
+
+			SynthDef('caesarfx', { arg readBus, fxBus, preGain=1, postGain=1, hiDamp=0, loDamp=0, wet=0;
+				var dry, fx;
+				dry = In.ar(readBus, 2);
+				fx = (dry * preGain).softclip * postGain;
+				fx = BHiShelf.ar(fx, 7000, 1, hiDamp);
+				fx = BLowShelf.ar(fx, 300, 1, loDamp);
+				fx = XFade2.ar(dry, fx, wet * 2 - 1);
+				Out.ar(fxBus, fx);
 			}).add;
 
 			SynthDef('caesarmix', {arg fxBus, globalOutBus=0, fadeBus, effectLevel=0.8, gate=1;
@@ -322,7 +331,7 @@ FadeDefault : FadeState {
 		caesar.fadeSynth = Synth('caesarfadeout', ['fadeBus', caesar.fadeBus,
 			'fadeInTime', caesar.fadeInTime, 'fadeOutTime', caesar.fadeOutTime, 'gate', 1]);
 		caesar.fadeOSCFunc = OSCFunc({ arg msg;
-			msg.postln;
+			//msg.postln;
 			if ( msg[3] == 0 ) {
 				caesar.fadeSynth.free;
 				caesar.fadeOSCFunc.free;
@@ -376,7 +385,7 @@ FadeOutCompleted : FadeState {
 		caesar.fadeSynth = Synth('caesarfadein', ['fadeBus', caesar.fadeBus,
 			'fadeInTime', caesar.fadeInTime, 'fadeOutTime', caesar.fadeOutTime, 'gate', 1]);
 		caesar.fadeOSCFunc = OSCFunc({ arg msg;
-			msg.postln;
+			// msg.postln;
 			if ( msg[3] == 0 ) {
 				caesar.fadeSynth.free;
 				caesar.fadeOSCFunc.free;
