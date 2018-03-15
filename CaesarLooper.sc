@@ -84,6 +84,11 @@ CaesarLooper {
 		}
 	}
 
+	// swaps the default post read fx for the provided one
+	playFX { arg fx;
+
+	}
+
 	// lo: 0, hi: 1.3
 	masterFeedback_ { arg newVal;
 		masterFeedback = newVal.clip(0, 1.3);
@@ -276,12 +281,17 @@ CaesarLooper {
 				Out.ar(fxBus, input * amp);
 			}).add;
 
-			SynthDef('caesarfx', { arg readBus, fxBus, preGain=1, postGain=1, hiDamp=0, loDamp=0, wet=0;
+			SynthDef('caesarfx', { arg readBus, fxBus, preGain=1, postGain=1, hiDamp=0, loDamp=0, freq=440, q = 1, wet=0, type = 0;
 				var dry, fx;
 				dry = In.ar(readBus, 2);
 				fx = (dry * preGain).softclip * postGain;
 				fx = BHiShelf.ar(fx, 7000, 1, hiDamp);
 				fx = BLowShelf.ar(fx, 300, 1, loDamp);
+				fx = SelectX.ar(type, [
+					fx,
+					RLPF.ar(fx, freq, q),
+					RHPF.ar(fx, freq, q)
+				]);
 				fx = XFade2.ar(dry, fx, wet * 2 - 1);
 				Out.ar(fxBus, fx);
 			}).add;
