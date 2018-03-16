@@ -3,8 +3,7 @@
 // - fix double rate resulting in skipped samples when writing
 // - freeze mode
 // - reverse
-// - Saturation
-// - Filter
+// - Make Patch work for fx so I can use a gui
 // - control delay time by changing beats / triplets (set numBeats after loop is recorded, Then change delay)
 // - sync groups
 CaesarLooper {
@@ -14,8 +13,8 @@ CaesarLooper {
 	var <buf, <looperGroup, <phasorBus, <globalInBus, <preAmpBus, <readBus, <fxBus, <globalOutBus, <fadeBus;
 	var <phasorSynth, <inputSynth, <reads, <writeSynth, <fxSynth, <mixSynth, <triggerSynth,  triggerOSCFunc;
 	var timeAtRecStart, <isRecording=false, timeAtTapStart, <isTapping=false, <isTriggering=false, <triggerLevel;
-	var <pitchInertia=1.0, <>delayInertiaFadeTime=0.02, <>delayInertia=false, <>digitalMode=false, <freezeMode;
-	var <monoize=0.0, <initialPan=0.0;
+	var <pitchInertia=1.0, <>delayInertiaFadeTime=0.02, <>delayInertia=false, <>digitalMode=false, <>freezeMode=\last;
+	var <isFrozen=false, <monoize=0.0, <initialPan=0.0;
 	var <delay=2.0, <masterFeedback=0.5, <dryLevel=1.0, <effectLevel=0.8, <inputLevel=1.0;
 	var <>fadeInTime=3.0, <>fadeOutTime=3.0, <>fadeOutCompleteAction=\none, <fadeState, <>fadeSynth, <>fadeOSCFunc;
 	var <>punchInQuantize=false, <>punchOutQuantize=false, <>punchOutType=\none, <>punchInInputLevel=1.0;
@@ -177,12 +176,36 @@ CaesarLooper {
 		}
 	}
 
-	freeze {}
+	// depends on freezeMode \current or \last
+	freeze {
+		if ( isFrozen ) {
+			this.pr_freezeReset;
+		} {
+			// cut switch inputSynth feedbackBus from fxBus to readBus
+			inputSynth.set('feedbackBus', readBus);
+			// get current phase, set end to current phase minus offset, trigger phaser, beware of wrapping issues
+			OSCFunc({arg msg;
+				var offsetPos = (msg[3] - (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
+				offsetPos.postln;
+				phasorSynth.setn('resetPos', offsetPos, 'delay', delay, 'freeze', 1)
+			}, '/tr').oneShot;
+			// trigger OSCFunc
+			phasorSynth.set('t_getPhase', 1);
+			isFrozen = true;
+		}
+	}
+
+	pr_freezeReset {
+		inputSynth.set('feedbackBus', fxBus);
+		phasorSynth.set('freeze', 0);
+		isFrozen = false;
+	}
 
 	reverse {}
 
 	// cannot be engaged while tap recording and is reset by it
 	tapLength {
+		if (isFrozen) { this.pr_freezeReset };
 		if (isRecording.not) {
 			if (isTapping) {
 				this.delay_( (thisThread.seconds - timeAtTapStart).clip(0.005, maxDelay) );
@@ -195,6 +218,7 @@ CaesarLooper {
 	}
 
 	delay_ { arg newVal;
+		if (isFrozen) { this.pr_freezeReset };
 		delay = newVal.clip(0.005, maxDelay);
 		this.changed( \delay );
 	}
@@ -212,6 +236,7 @@ CaesarLooper {
 			if ( posil ) { this.inputLevel_( punchOutInputLevel ) };
 			isRecording = false;
 		} {
+			if (isFrozen) { this.pr_freezeReset };
 			inputSynth.set('pr_feedback', 0.0); // cut feedback
 			this.effectLevel_(0);
 			timeAtRecStart = thisThread.seconds;
@@ -222,6 +247,7 @@ CaesarLooper {
 
 	clear {
 		buf.zero;
+		this.pr_freezeReset;
 	}
 
 	// see FadeState for implementation of state machine
@@ -262,10 +288,24 @@ CaesarLooper {
 				Out.ar( globalOutBus, inputStereo * dryLevel ); // dry signal
 				Out.ar( preAmpBus, (sig * inputLevel) + (feedbackIn * masterFeedback * pr_feedback) );
 			}).add;
+			//
+			// SynthDef('caesarphasor', {arg buf, phasorBus=101, rate=1, pitchInertia=1;
+			// 	var phaseRate = Lag2.kr( rate, pitchInertia );
+			// 	var phase = Phasor.ar( 0, BufRateScale.kr(buf) * phaseRate , 0, BufFrames.kr(buf) );
+			// 	Out.ar(phasorBus, phase);
+			// }).add;
+			//
 
-			SynthDef('caesarphasor', {arg buf, phasorBus=101, rate=1, pitchInertia=1;
+			SynthDef('caesarphasor', {arg buf, phasorBus=101, rate=1, pitchInertia=1, t_getPhase=0, resetPos=0, freeze=0, delay=2;
+				var freezer = TDuty.kr(delay, Changed.kr(freeze), 1 );
 				var phaseRate = Lag2.kr( rate, pitchInertia );
-				var phase = Phasor.ar( 0, BufRateScale.kr(buf) * phaseRate , 0, BufFrames.kr(buf) );
+				var phase = Phasor.ar( Select.kr(freeze, [0, freezer]),
+					BufRateScale.kr(buf) * phaseRate,
+					0,
+					BufFrames.kr(buf),
+					resetPos );
+				SendTrig.kr(t_getPhase, 34, phase);
+
 				Out.ar(phasorBus, phase);
 			}).add;
 
@@ -281,7 +321,7 @@ CaesarLooper {
 				Out.ar(fxBus, input * amp);
 			}).add;
 
-			SynthDef('caesarfx', { arg readBus, fxBus, preGain=1, postGain=1, hiDamp=0, loDamp=0, freq=440, q = 1, wet=0, type = 0;
+			SynthDef('caesarfx', { arg readBus, fxBus, preGain=1, postGain=1, hiDamp=0, loDamp=0, freq=440, q = 1, wet=0, type=0;
 				var dry, fx;
 				dry = In.ar(readBus, 2);
 				fx = (dry * preGain).softclip * postGain;
