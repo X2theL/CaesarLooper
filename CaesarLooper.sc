@@ -4,7 +4,6 @@
 // - freeze mode
 // - reverse
 // - Make Patch work for fx so I can use a gui
-// - control delay time by changing beats / triplets (set numBeats after loop is recorded, Then change delay)
 // - sync groups
 CaesarLooper {
 	classvar <syncGroups, <phasorGroup;
@@ -13,8 +12,8 @@ CaesarLooper {
 	var <buf, <looperGroup, <phasorBus, <globalInBus, <preAmpBus, <readBus, <fxBus, <globalOutBus, <fadeBus;
 	var <phasorSynth, <inputSynth, <reads, <writeSynth, <fxSynth, <mixSynth, <triggerSynth,  triggerOSCFunc;
 	var timeAtRecStart, <isRecording=false, timeAtTapStart, <isTapping=false, <isTriggering=false, <triggerLevel;
-	var <pitchInertia=1.0, <>delayInertiaFadeTime=0.02, <>delayInertia=false, <>digitalMode=false, <>freezeMode=\last;
-	var <isFrozen=false, <monoize=0.0, <initialPan=0.0;
+	var <pitchInertia=0.1, <delayInertiaFadeTime=0.02, <>delayInertia=false, <>digitalMode=false, <>freezeMode=\last;
+	var <isFrozen=false, <isReversed=false, <reverseRout, <monoize=0.0, <initialPan=0.0;
 	var <delay=2.0, <masterFeedback=0.5, <dryLevel=1.0, <effectLevel=0.8, <inputLevel=1.0;
 	var <>fadeInTime=3.0, <>fadeOutTime=3.0, <>fadeOutCompleteAction=\none, <fadeState, <>fadeSynth, <>fadeOSCFunc;
 	var <>punchInQuantize=false, <>punchOutQuantize=false, <>punchOutType=\none, <>punchInInputLevel=1.0;
@@ -118,6 +117,12 @@ CaesarLooper {
 		phasorSynth.set('pitchInertia', pitchInertia);
 	}
 
+	//
+	delayInertiaFadeTime_ { arg newVal;
+		delayInertiaFadeTime = newVal.clip(0, 0.3);
+		this.changed(\fade);
+	}
+
 	// lo: 0, hi: 1
 	monoize_ { arg newVal;
 		monoize = newVal.clip(0, 1);
@@ -187,9 +192,12 @@ CaesarLooper {
 			inputSynth.set('feedbackBus', readBus);
 			// get current phase, set end to current phase minus offset, trigger phaser, beware of wrapping issues
 			OSCFunc({arg msg;
-				var offsetPos = (msg[3] - (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
-				offsetPos.postln;
-				phasorSynth.setn('resetPos', offsetPos, 'delay', delay, 'freeze', 1)
+				var offsetPos;
+				if (msg.at(2) == 34) { // 34 is id of the getPhase trigger
+					offsetPos = (msg[3] - (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
+					offsetPos.postln;
+					phasorSynth.setn('resetPos', offsetPos, 'delay', delay, 'freeze', 1);
+				}
 			}, '/tr').oneShot;
 			// trigger OSCFunc
 			phasorSynth.set('t_getPhase', 1);
@@ -203,11 +211,39 @@ CaesarLooper {
 		isFrozen = false;
 	}
 
-	reverse {}
+	// set phasor rate to 0, change write offset
+	reverse {
+		var offset, rate;
+		if ( isReversed.not ) {
+			offset = 2 * ( delay * server.sampleRate ).round;
+			rate = -1;
+		} {
+			offset = 0;
+			rate = 1;
+		};
+		OSCFunc({ arg msg;
+			msg.postln;
+			if ( msg.at(2) == 35 ) {
+				// set write offset
+				writeSynth.set( 'offset', offset );
+				// toggle phasor rate
+				phasorSynth.set('rate', rate);
+				isReversed = isReversed.not;
+			}
+		}, '/tr', server.addr, nil, [phasorSynth.nodeID] ).oneShot;
+		phasorSynth.set('rate', 0);
+	}
+
+	pr_reverseReset {
+		phasorSynth.set('rate', 1);
+		writeSynth.set('offset', 0);
+		isReversed = false;
+	}
 
 	// cannot be engaged while tap recording and is reset by it
 	tapLength {
 		if (isFrozen) { this.pr_freezeReset };
+		if ( isReversed ) { this.pr_reverseReset };
 		if (isRecording.not) {
 			if (isTapping) {
 				this.delay_( (thisThread.seconds - timeAtTapStart).clip(0.005, maxDelay) );
@@ -262,6 +298,7 @@ CaesarLooper {
 			isRecording = false;
 		} {
 			if (isFrozen) { this.pr_freezeReset };
+			if ( isReversed ) { this.pr_reverseReset };
 			inputSynth.set('pr_feedback', 0.0); // cut feedback
 			this.effectLevel_(0);
 			timeAtRecStart = thisThread.seconds;
@@ -328,15 +365,15 @@ CaesarLooper {
 					BufRateScale.kr(buf) * phaseRate,
 					0,
 					BufFrames.kr(buf),
-					resetPos );
+					resetPos ).round; // TODO: does this work???
 				SendTrig.kr(t_getPhase, 34, phase);
-
+				SendTrig.kr( phaseRate.abs < 0.001, 35, 1);
 				Out.ar(phasorBus, phase);
 			}).add;
 
-			SynthDef('caesarwrite', {arg buf, preAmpBus, phasorBus;
+			SynthDef('caesarwrite', {arg buf, preAmpBus, phasorBus, offset=0;
 				var input = In.ar(preAmpBus, 2);
-				var phase = In.ar(phasorBus, 1);
+				var phase = Wrap.ar( In.ar(phasorBus, 1) - offset, 0, BufFrames.kr(buf) );
 				BufWr.ar(input, buf, phase);
 			}).add;
 
@@ -527,10 +564,16 @@ CaesarRead {
 			'pan', pan,
 			'fade', caesar.delayInertiaFadeTime,
 			'pitchInertia', caesar.pitchInertia,
-			'offset', (caesar.delay * caesar.server.sampleRate * divisor).round,
+			'offset', this.pr_offset,
 			'lfoFreq', caesar.pitchLFOSpeed,
 			'lfoDepth', caesar.pitchLFODepth
 		], caesar.inputSynth, 'addAfter');
+	}
+
+	pr_offset {
+		var offset = ( caesar.delay * caesar.server.sampleRate * divisor ).round;
+		//if ( caesar.isReversed ) { offset = offset.neg };
+		^offset;
 	}
 
 	release {
@@ -543,7 +586,7 @@ CaesarRead {
 			this.make;
 		} { \delay } {
 			if ( caesar.delayInertia ) {
-				synth.set('offset', (caesar.delay * caesar.server.sampleRate * divisor).round );
+				synth.set('offset', this.pr_offset );
 			} {
 				this.release;
 				this.make;
@@ -552,6 +595,8 @@ CaesarRead {
 			synth.set('lfoFreq', caesar.pitchLFOSpeed);
 		} { \pitchLFODepth } {
 			synth.set('lfoDepth', caesar.pitchLFODepth);
+		} { \fade } {
+			synth.set('fade', caesar.delayInertiaFadeTime);
 		};
 	}
 
