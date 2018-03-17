@@ -149,10 +149,12 @@ CaesarLooper {
 	}
 
 	tapeStop {
+		if (isFrozen) { this.pr_freezeReset };
 		phasorSynth.set('rate', 0);
 	}
 
 	tapeStart {
+		if (isFrozen) { this.pr_freezeReset };
 		phasorSynth.set('rate', pitch.midiratio);
 	}
 
@@ -217,10 +219,33 @@ CaesarLooper {
 		}
 	}
 
-	delay_ { arg newVal;
+	delay_ { arg newVal=1;
 		if (isFrozen) { this.pr_freezeReset };
 		delay = newVal.clip(0.005, maxDelay);
 		this.changed( \delay );
+	}
+
+	// beats can be set with or without changing delay time
+	beats_ {arg newVal=1, changeDelay=false;
+		var oldBeats = beats;
+		beats = newVal;
+		if (changeDelay) {
+			this.delay_( (delay / oldBeats) * beats );
+		}
+	}
+
+	// times 2/3
+	triplet_ { arg newVal=false, changeDelay=false;
+		if ( triplet != newVal ) {
+			triplet = newVal;
+			if ( changeDelay ) {
+				if ( triplet ) {
+					this.delay_( delay * 0.6667 );
+				} {
+					this.delay_( delay * 1.5 );
+				}
+			}
+		}
 	}
 
 	// can't call delay setter here because CaesarRead's update gets confused
