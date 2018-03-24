@@ -1,8 +1,7 @@
 // a reverse engineered version of the awesome vst plugin by Expert Sleepers
 // TODO:
 // - fix double rate resulting in skipped samples when writing
-// - freeze mode
-// - reverse
+// - fix artefacts when reversing
 // - Make Patch work for fx so I can use a gui
 // - sync groups
 CaesarLooper {
@@ -12,7 +11,7 @@ CaesarLooper {
 	var <buf, <looperGroup, <phasorBus, <globalInBus, <preAmpBus, <readBus, <fxBus, <globalOutBus, <fadeBus;
 	var <phasorSynth, <inputSynth, <reads, <writeSynth, <fxSynth, <mixSynth, <triggerSynth,  triggerOSCFunc;
 	var timeAtRecStart, <isRecording=false, timeAtTapStart, <isTapping=false, <isTriggering=false, <triggerLevel;
-	var <pitchInertia=0.1, <delayInertiaFadeTime=0.02, <>delayInertia=false, <>digitalMode=false, <>freezeMode=\last;
+	var <pitchInertia=0.0, <delayInertiaFadeTime=0.02, <>delayInertia=false, <>digitalMode=false, <>freezeMode=\last;
 	var <isFrozen=false, <isReversed=false, <reverseRout, <monoize=0.0, <initialPan=0.0;
 	var <delay=2.0, <masterFeedback=0.5, <dryLevel=1.0, <effectLevel=0.8, <inputLevel=1.0;
 	var <>fadeInTime=3.0, <>fadeOutTime=3.0, <>fadeOutCompleteAction=\none, <fadeState, <>fadeSynth, <>fadeOSCFunc;
@@ -212,7 +211,7 @@ CaesarLooper {
 	}
 
 	// set phasor rate to 0, change write offset
-	reverse {
+/*	reverse {
 		var offset, rate;
 		if ( isReversed.not ) {
 			offset = 2 * ( delay * server.sampleRate ).round;
@@ -224,19 +223,41 @@ CaesarLooper {
 		OSCFunc({ arg msg;
 			msg.postln;
 			if ( msg.at(2) == 35 ) {
-				// set write offset
-				writeSynth.set( 'offset', offset );
-				// toggle phasor rate
-				phasorSynth.set('rate', rate);
+				server.makeBundle(nil, {
+					// set write offset
+					writeSynth.set( 'offset', offset );
+					// toggle phasor rate
+					phasorSynth.set('rate', rate);
+				});
 				isReversed = isReversed.not;
 			}
 		}, '/tr', server.addr, nil, [phasorSynth.nodeID] ).oneShot;
 		phasorSynth.set('rate', 0);
+	}*/
+
+	reverse {
+		var offset, rate;
+		if ( isReversed.not ) {
+			offset = 2 * ( delay * server.sampleRate ).round;
+			rate = -1;
+		} {
+			offset = 0;
+			rate = 1;
+		};
+		server.makeBundle(nil, {
+			// set write offset
+			writeSynth.set( 'offset', offset );
+			// toggle phasor rate
+			phasorSynth.set('rate', rate);
+		});
+		isReversed = isReversed.not;
 	}
 
 	pr_reverseReset {
-		phasorSynth.set('rate', 1);
-		writeSynth.set('offset', 0);
+		server.makeBundle (nil, {
+			phasorSynth.set('rate', 1);
+			writeSynth.set('offset', 0);
+		});
 		isReversed = false;
 	}
 
@@ -621,9 +642,10 @@ CaesarRead {
 			SynthDef('caesarread', {arg buf, phasorBus, readBus, amp=1.0, pan=0, gate=1, fade=0.1, pitchInertia=0.4, offset=10000, lfoFreq, lfoDepth;
 				var phase, sig;
 
-				phase = In.ar( phasorBus, 1 ) - Lag2.kr(offset, pitchInertia);
-				phase = Wrap.ar( phase + Lag2.kr( SinOsc.kr(lfoFreq, 0, lfoDepth) ), 0, BufFrames.kr( buf ) );
-				sig = BufRd.ar(2, buf, phase, 0) * Lag.kr(amp, fade) * EnvGen.ar( Env.asr(fade, 1, fade), gate, doneAction:2 );
+				phase = Wrap.ar(In.ar( phasorBus, 1 ) - K2A.ar(offset), 0, BufFrames.kr(buf)).poll(2);
+				//phase = In.ar( phasorBus, 1 ) - Lag2.ar(K2A.ar(offset), pitchInertia);
+				//phase = Wrap.ar( phase + Lag2.ar( SinOsc.ar(lfoFreq, 0, lfoDepth) ), 0, BufFrames.kr( buf ) ).round.poll(2);
+				sig = BufRd.ar(2, buf, phase, 0, 4) * Lag.kr(amp, fade) * EnvGen.ar( Env.asr(fade, 1, fade), gate, doneAction:2 );
 				pan = pan + 1; // magic pan solution
 				sig = [ pan.linlin( 1, 2, 1, 0 ) * sig[0], pan.clip( 0, 1 ) * sig[1] ];
 				Out.ar( readBus, sig );
