@@ -395,7 +395,7 @@ CaesarLooper {
 			SynthDef('caesarwrite', {arg buf, preAmpBus, phasorBus, offset=0;
 				var input = In.ar(preAmpBus, 2);
 				var phase = Wrap.ar( In.ar(phasorBus, 1) - offset, 0, BufFrames.kr(buf) );
-				BufWr.ar(input, buf, phase);
+				IBufWr.ar(input, buf, phase, 1);
 			}).add;
 
 			// TODO: make swappable, put before caesarmix
@@ -642,7 +642,7 @@ CaesarRead {
 			SynthDef('caesarread', {arg buf, phasorBus, readBus, amp=1.0, pan=0, gate=1, fade=0.1, pitchInertia=0.4, offset=10000, lfoFreq, lfoDepth;
 				var phase, sig;
 
-				phase = Wrap.ar(In.ar( phasorBus, 1 ) - K2A.ar(offset), 0, BufFrames.kr(buf)).poll(2);
+				phase = Wrap.ar(In.ar( phasorBus, 1 ) - K2A.ar(offset), 0, BufFrames.kr(buf));
 				//phase = In.ar( phasorBus, 1 ) - Lag2.ar(K2A.ar(offset), pitchInertia);
 				//phase = Wrap.ar( phase + Lag2.ar( SinOsc.ar(lfoFreq, 0, lfoDepth) ), 0, BufFrames.kr( buf ) ).round.poll(2);
 				sig = BufRd.ar(2, buf, phase, 0, 4) * Lag.kr(amp, fade) * EnvGen.ar( Env.asr(fade, 1, fade), gate, doneAction:2 );
