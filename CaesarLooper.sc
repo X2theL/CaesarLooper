@@ -1,8 +1,7 @@
 // a reverse engineered version of the awesome vst plugin by Expert Sleepers
 // TODO:
-// - fix double rate resulting in skipped samples when writing
-// - fix artefacts when reversing
-// - Make Patch work for fx so I can use a gui
+// - fix little pops when reversing and tapRecording out of reverse!
+// - test freeze in combination with reverse
 // - sync groups
 CaesarLooper {
 	classvar <syncGroups, <phasorGroup;
@@ -114,6 +113,7 @@ CaesarLooper {
 	pitchInertia_ { arg newVal;
 		pitchInertia = newVal.clip(0, 5);
 		phasorSynth.set('pitchInertia', pitchInertia);
+		this.changed(\pitchInertia); // notify reads
 	}
 
 	//
@@ -246,27 +246,20 @@ CaesarLooper {
 			offset = 0;
 			rate = 1;
 		};
+		writeSynth.free;
 		server.makeBundle(nil, {
-			// set write offset
-			writeSynth.set( 'offset', offset );
+			// new write synth with offset
+			writeSynth = Synth('caesarwrite', ['buf', buf, 'preAmpBus', preAmpBus, 'phasorBus', phasorBus, 'offset', offset], looperGroup, 'addToTail');
 			// toggle phasor rate
 			phasorSynth.set('rate', rate);
 		});
 		isReversed = isReversed.not;
 	}
 
-	pr_reverseReset {
-		server.makeBundle (nil, {
-			phasorSynth.set('rate', 1);
-			writeSynth.set('offset', 0);
-		});
-		isReversed = false;
-	}
-
 	// cannot be engaged while tap recording and is reset by it
 	tapLength {
 		if (isFrozen) { this.pr_freezeReset };
-		if ( isReversed ) { this.pr_reverseReset };
+		if ( isReversed ) { this.reverse };
 		if (isRecording.not) {
 			if (isTapping) {
 				this.delay_( (thisThread.seconds - timeAtTapStart).clip(0.005, maxDelay) );
@@ -321,7 +314,7 @@ CaesarLooper {
 			isRecording = false;
 		} {
 			if (isFrozen) { this.pr_freezeReset };
-			if ( isReversed ) { this.pr_reverseReset };
+			if ( isReversed ) { this.reverse };
 			inputSynth.set('pr_feedback', 0.0); // cut feedback
 			this.effectLevel_(0);
 			timeAtRecStart = thisThread.seconds;
@@ -595,7 +588,6 @@ CaesarRead {
 
 	pr_offset {
 		var offset = ( caesar.delay * caesar.server.sampleRate * divisor ).round;
-		//if ( caesar.isReversed ) { offset = offset.neg };
 		^offset;
 	}
 
@@ -620,6 +612,8 @@ CaesarRead {
 			synth.set('lfoDepth', caesar.pitchLFODepth);
 		} { \fade } {
 			synth.set('fade', caesar.delayInertiaFadeTime);
+		} { \pitchInertia } {
+			synth.set('pitchInertia', caesar.pitchInertia);
 		};
 	}
 
@@ -640,13 +634,12 @@ CaesarRead {
 
 	*initClass {
 		ServerBoot.add({
-			// reads offset ahead of write synth and wraps over buffer borders
+			// reads offset ahead of write synth except when reversed
 			SynthDef('caesarread', {arg buf, phasorBus, readBus, amp=1.0, pan=0, gate=1, fade=0.1, pitchInertia=0.4, offset=10000, lfoFreq, lfoDepth;
 				var phase, sig;
 
-				phase = Wrap.ar(In.ar( phasorBus, 1 ) - offset, 0, BufFrames.kr(buf));
-				//phase = In.ar( phasorBus, 1 ) - Lag2.ar(K2A.ar(offset), pitchInertia);
-				//phase = Wrap.ar( phase + Lag2.ar( SinOsc.ar(lfoFreq, 0, lfoDepth) ), 0, BufFrames.kr( buf ) ).round.poll(2);
+				phase = In.ar( phasorBus, 1 ) - Lag2.ar(K2A.ar(offset), pitchInertia);
+				phase = Wrap.ar( phase + Lag2.ar( SinOsc.ar(lfoFreq, 0, lfoDepth) ), 0, BufFrames.kr( buf ) ).round;
 				sig = BufRd.ar(2, buf, phase, 0, 4) * Lag.kr(amp, fade) * EnvGen.ar( Env.asr(fade, 1, fade), gate, doneAction:2 );
 				pan = pan + 1; // magic pan solution
 				sig = [ pan.linlin( 1, 2, 1, 0 ) * sig[0], pan.clip( 0, 1 ) * sig[1] ];
