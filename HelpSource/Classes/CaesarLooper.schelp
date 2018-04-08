@@ -1,0 +1,501 @@
+TITLE:: CaesarLooper
+summary:: A clone of the amazing tape delay/looper VST Augustus Loop by ExpertSleepers
+categories:: LiveLooping
+related:: Classes/IBufWr, Tutorials/Loop-Like-An-Emperor
+
+DESCRIPTION::
+CaesarLooper is a tape delay style looper with tons of features. To get to know it, it is highly recommended to work through the Loop-Like-An-Emperor tutorial
+
+
+CLASSMETHODS::
+
+METHOD:: syncGroups
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: new
+(describe method here)
+
+ARGUMENT:: inputBus
+(describe argument here)
+
+ARGUMENT:: outputBus
+(describe argument here)
+
+ARGUMENT:: maxDelay
+(describe argument here)
+
+ARGUMENT:: server
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: initClass
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: phasorGroup
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+INSTANCEMETHODS::
+
+METHOD:: masterFeedback
+(describe method here)
+
+ARGUMENT:: newVal
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: syncMode
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: writeSynth
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: pitchInertia
+(describe method here)
+
+ARGUMENT:: newVal
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: buf
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: isTapping
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: freeze
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: looperGroup
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: delay
+(describe method here)
+
+ARGUMENT:: newVal
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: playFX
+(describe method here)
+
+ARGUMENT:: fx
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: free
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: reads
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: punchOutQuantize
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: init
+(describe method here)
+
+ARGUMENT:: in
+(describe argument here)
+
+ARGUMENT:: out
+(describe argument here)
+
+ARGUMENT:: smode
+(describe argument here)
+
+ARGUMENT:: sgroup
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: fadeOutCompleteAction
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: beats
+(describe method here)
+
+ARGUMENT:: newVal
+(describe argument here)
+
+ARGUMENT:: changeDelay
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: pr_freezeReset
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: isFrozen
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: syncGroup
+(describe method here)
+
+ARGUMENT:: newGroup
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: fadeOverride
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: tapLength
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: dryLevel
+(describe method here)
+
+ARGUMENT:: newVal
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: fxSynth
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: inputLevel
+(describe method here)
+
+ARGUMENT:: newVal
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: punchInQuantize
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: addRead
+(describe method here)
+
+ARGUMENT:: div
+(describe argument here)
+
+ARGUMENT:: level
+(describe argument here)
+
+ARGUMENT:: pan
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: isReversed
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: removeRead
+(describe method here)
+
+ARGUMENT:: index
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: punchInInputLevel
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: digitalMode
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: triggerSynth
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: reverseRout
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: triplet
+(describe method here)
+
+ARGUMENT:: newVal
+(describe argument here)
+
+ARGUMENT:: changeDelay
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: fade
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: isRecording
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: punchOutType
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: initialPan
+(describe method here)
+
+ARGUMENT:: newVal
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: delayInertia
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: fadeOutTime
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: effectLevel
+(describe method here)
+
+ARGUMENT:: newVal
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: freezeMode
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: fadeState
+(describe method here)
+
+ARGUMENT:: newState
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: reverse
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: preAmpBus
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: punchOutInputLevel
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: pitch
+(describe method here)
+
+ARGUMENT:: newVal
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: posil
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: triggerLevel
+(describe method here)
+
+ARGUMENT:: newVal
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: fadeSynth
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: server
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: fadeInTime
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: inputSynth
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: tapeStart
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: globalInBus
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: tapeStop
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: phasorBus
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: globalOutBus
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: monoize
+(describe method here)
+
+ARGUMENT:: newVal
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: maxDelay
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: phasorSynth
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: pisil
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: readBus
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: pitchLFOSpeed
+(describe method here)
+
+ARGUMENT:: newVal
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: fadeOSCFunc
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: armAutoRec
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: fadeBus
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: fxBus
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: delayInertiaFadeTime
+(describe method here)
+
+ARGUMENT:: newVal
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: mixSynth
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: tapRecord
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: isTriggering
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: pitchLFODepth
+(describe method here)
+
+ARGUMENT:: newVal
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: clear
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+EXAMPLES::
+
+code::
+(some example code)
+::

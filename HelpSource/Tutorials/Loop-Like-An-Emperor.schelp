@@ -1,0 +1,308 @@
+title:: Loop like an emperor
+summary:: A CaesarLooper tutorial
+categories:: Tutorials LiveLooping
+
+This is a practical introduction to CaesarLooper. Read the class reference for details on its methods.
+
+link::Classes/CaesarLooper::
+
+Section::Introduction
+
+CaesarLooper is a clone of the Augustus Loop VST by ExpertSleepers (http://www.expert-sleepers.co.uk/augustusloop.html). I've owned this plugin for years and even after having played with many other hardware and software loopers since, I still love its elegance, versatility and sometimes unpredictability. Whenever I play with it new strange sounds happen.
+
+If you use Windows or have a Mac and you work within a DAW, get it. It's fun! I wrote CaesarLooper to have something similar that can run on Linux on my BeagleBone Black. That's the reason there is no gui for it (well, that and the fact that I hate programming guis). I've tried to recreate Augustus Loop's basic concepts and functionalities. But I'm by no means a good programmer so expect CaesarLooper to be a lot more buggy than the original. But that doesn't mean you can't have a lot of fun with it as well.
+
+If you find a bug or have a suggestion on how to improve on it, please let me know.
+
+Section::Prerequisites
+
+In order to use CaesarLooper, you need to have IBufWr by Pierre Alexandre Tremblay installed. Find it here:
+
+https://github.com/tremblap/IBufWr
+
+You also will need a sound source to feed it. CaesarLooper runs in stereo, because I was too lazy to build a mono option as well. Throughout the tutorial, I will be using the first two inputs from my audio interface which is the default.
+
+To really have fun with a looper - especially if you play an intruments that occupies both of your hands - you will want to map a couple of your favorite functions to a midi foot switch. There are other tutorials that cover this so I won't bother with it here. I'll just use a Mic plugged into a mixer that feeds the first two channels of my audio interface.
+
+strong::Attention!:: This CaesarLooper is based on feedback loops. It's in the nature of feedback loops to sometimes get out of control and become REALLY LOUD. To reduce the risk of ear damage, choose a low enough basic volume, be especially careful when playing with the filter functions, create longer loops (so you can hear the danger coming) and always know where your volume knob is.
+
+Having said that, have fun! Let's go!
+
+Section::Basics
+
+code::
+s.boot
+
+a = CaesarLooper(maxDelay:30)
+::
+
+This creates one instance with a 30 second Buffer.
+
+As a default, CaesarLooper uses the first two Audio Inputs from your audio interface
+and outputs to the first two output channels. See the help file for ways to change that.
+
+As soon as the synths are instantiated, you will hear a 2 second delay that soon dies off.
+
+To get an endlessly repeating loop, turn the masterFeedback up to 1
+
+code::
+a.masterFeedback_(1)
+::
+
+Once that starts to get annoying, turn the feedback off
+
+code::
+a.masterFeedback_(0)
+::
+
+The delay will stop after one repetition. Make it a little shorter:
+
+code::
+a.delay_(1.2)
+::
+
+Get the feedback back to 1
+
+code::
+a.masterFeedback_(1)
+::
+
+Cut the input to the delay to make the loop unchangeable
+
+code::
+a.inputLevel_(0)
+::
+
+Add to the loop
+
+code::
+a.inputLevel_(1)
+::
+
+Now for something a little cooler: hit tapRecord to start recording, make some noise then hit tapRecord again to stop recording and close the loop:
+
+code::
+a.tapRecord
+::
+
+You'll notice that inputLevel has been set to 0 automatically. The tapRecord behaviour can be changed by setting the variables pisil and posil. If you don't like to hit tapRecord twice, you can use the auto start recording feature. Arm it:
+
+code::
+a.armAutoRec
+::
+
+and whenever you feel ready start making noise. Try beatboxing for a nice clean onset to trigger recording. CaesarLooper will notify you in the post window when it has started recording. You will have to close the loop manually though by sending
+
+code::
+a.tapRecord
+::
+
+// There is also a way to change the delay time by sending tapLenth twice. Let's use it to shorten our loop while it's running. Execute this twice within about a second
+
+code::
+a.tapLength;
+::
+
+You can also use it to lengthen the loop and create longer loops from repetitions of shorter ones. Try it out by waiting about 2 seconds. Later, we'll learn a way to change loop times in a more precise way. Then add something to the loop
+
+code::
+a.inputLevel_(1)
+::
+
+Once you're happy, cut the input again and enjoy
+
+code::
+a.inputLevel_(0)
+::
+
+Clear the loop when you're ready for something new.
+
+code::
+a.clear
+::
+
+Congratulations! You have just scratched the surface of what CaesarLooper can do.
+
+Section::Advanced Stuff
+
+How about some pitch changes? First record a loop (execute once to start, then again to stop recording)
+
+code::
+a.tapRecord
+::
+
+Now pitch the loop up one octave
+
+code::
+a.pitch_(12)
+::
+
+and record something on top of that
+
+code::
+a.inputLevel_(1)
+::
+
+Pitch down again
+
+code::
+a.pitch_(0)
+::
+
+and another octave (pitches between -12 and 12 are allowed)
+
+code::
+a.pitch_(-12)
+::
+
+Reverse the loop, record something and reverse it again.
+
+code::
+a.reverse
+::
+
+Now you can put your own "subliminal satanic messages" into your loops. Just like the Beatles! ;-)
+
+How about some tape machine feeling? Set pitchInertia to 0.6 seconds. That's the time the "tape" will take to reach the new "speed"
+
+code::
+a.pitchInertia_(0.6);
+::
+
+"Press stop"
+
+code::
+a.tapeStop;
+::
+
+This is a good opportunity to explain a few concepts: internally, pitchInertia is a Lag.kr on the rate of the Phasor synth, so it affects all functions that change that rate. These functions are pitch, reverse, tapeStop and tapeStart. But pitchInertia also controls the lag of the read synth's phase. That means that it can be used to create the effect of tape read heads sliding into new positions when changing the delay time. Let's try this out. Start the tape again:
+
+code::
+a.tapeStart;
+::
+
+Record a new loop:
+
+code::
+a.tapRecord // twice
+::
+
+Remember, pitchInertia is still set to 0.6. Now change the delay time:
+
+code::
+a.delay_(3.8)
+::
+
+Hmm, shouldn't we hear that sliding effect? Well, there is another default setting preventing that: delayInertia. This var is set to false. This means that the default behaviour when changing delay times is to fade out the old read synth and create a new one and fade it in at the new position. To change this, set delayInertia to true:
+
+code::
+a.delayInertia_(false)
+
+a.delay_(1.8 )
+::
+
+Nice! :-)
+
+At this point, I have a pretty lofi sounding tape-like loop going. Make it even more lofi by using the pitch LFO
+
+code::
+a.pitchLFOSpeed_(0.5)
+a.pitchLFODepth_(100) // it goes to 3000!
+::
+
+You can have CaesarLooper automatically fade out your loop:
+
+code::
+a.fade
+::
+
+and fade it back in again
+
+code::
+a.fade
+::
+
+The default fade time is 3.0 seconds. Let's set it to 7
+
+code::
+a.fadeOutTime_(7.0)
+::
+
+Now, if you start a fade out and then decide you don't want to wait for 7 seconds you can override the fade with
+
+code::
+a.fadeOverride
+::
+
+Silence. Now you can start a fade in
+
+code::
+a.fade
+::
+
+or you can do fadeOverride again to instantly get the volume up
+
+code::
+a.fadeOverride
+::
+
+There's more: fadeout completion actions. The default fadeout completion action is \none. Let's set it to \clear
+
+code::
+a.fadeOutCompleteAction_('clear');
+::
+
+The loop is automatically cleared once it has faded out. Let's tap out a new one
+
+code::
+a.tapRecord // 2x
+::
+
+You will hear nothing because the loop is still faded out. Fade it back in:
+
+code::
+a.fade
+::
+
+If you want to skip the fade in use clear2. This will clear the loop and set the volume back to normal immediately
+
+code::
+a.fadeOutCompleteAction_('clear2');
+::
+
+CaesarLooper can also treat delay times relatively with its beats and triplet methods first see the default number of beats:
+
+code::
+a.beats
+::
+
+As you see, it's 4. But the loop I have running right now is actually a six beat beatbox. so I'll set the beats to 6
+
+code::
+a.beats_(6)
+::
+
+Nothing seems to have changed. But we can now use the beats method to change the actual size of the loop in a musical way by using the beats method with its second argument "changeDelay" set to true:
+
+code::
+a.beats_(3, true)
+::
+
+Now my loop has 3 beats. I'll change it back to 6 beats:
+
+code::
+a.beats_(6, true)
+::
+
+Again it seems like nothing has changed. But try an overdub
+
+code::
+a.inputLevel_(1)
+a.inputLevel_(0)
+::
+
+You'll notice that the loop is now actually 6 beats long again. The same size we started at. But now it consists of two repetitions of the same 3 beats of audio (plus our overdub) The triplet method changes the loop length 2/3 the original size:
+
+code::
+a.triplet_(true, true)
+::
