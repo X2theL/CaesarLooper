@@ -1,8 +1,9 @@
 // a reverse engineered version of the awesome vst plugin by Expert Sleepers
 // TODO:
-// - fix little pops when reversing and tapRecording out of reverse!
-// - test freeze in combination with reverse
+// - new reverse function that keeps the write synth at position and changes reads!
+// - new freeze function that is language controlled (Routine)
 // - sync groups
+// - make globalInBus and globalOutBus work with private busses
 CaesarLooper {
 	classvar <syncGroups, <phasorGroup;
 
@@ -10,12 +11,11 @@ CaesarLooper {
 	var <buf, <looperGroup, <phasorBus, <globalInBus, <preAmpBus, <readBus, <fxBus, <globalOutBus, <fadeBus;
 	var <phasorSynth, <inputSynth, <reads, <writeSynth, <fxSynth, <mixSynth, <triggerSynth,  triggerOSCFunc;
 	var timeAtRecStart, <isRecording=false, timeAtTapStart, <isTapping=false, <isTriggering=false, <triggerLevel;
-	var <pitchInertia=0.0, <delayInertiaFadeTime=0.02, <>delayInertia=false, <>digitalMode=false, <>freezeMode=\last;
+	var <pitchInertia=0.0, <delayInertiaFadeTime=0.02, <>delayInertia=false;
 	var <isFrozen=false, <isReversed=false, <reverseRout, <monoize=0.0, <initialPan=0.0;
 	var <delay=2.0, <masterFeedback=0.5, <dryLevel=1.0, <effectLevel=0.8, <inputLevel=1.0;
 	var <>fadeInTime=3.0, <>fadeOutTime=3.0, <>fadeOutCompleteAction=\none, <fadeState, <>fadeSynth, <>fadeOSCFunc;
-	var <>punchInQuantize=false, <>punchOutQuantize=false, <>punchOutType=\none, <>punchInInputLevel=1.0;
-	var <>punchOutInputLevel=0.0, <>pisil=true, <>posil=true;
+	var <>punchInInputLevel=1.0, <>punchOutInputLevel=0.0, <>pisil=true, <>posil=true;
 	var <pitch=0.0, <pitchLFOSpeed=0.0, <pitchLFODepth=0.0;
 
 	*new { arg inputBus, outputBus, maxDelay=30, server;
@@ -42,7 +42,9 @@ CaesarLooper {
 			readBus = Bus.audio(server, 2); // out bus for read synths
 			fxBus = Bus.audio(server, 2); // out bus for fx, aka feedbackBus
 			fadeBus = Bus.control(server, 1); // bus for fadeSynth
+			fadeBus.set(1);
 			server.sync;
+
 			phasorSynth = Synth('caesarphasor', ['buf', buf, 'phasorBus', phasorBus, 'pitchInertia', pitchInertia], phasorGroup);
 
 			inputSynth = Synth('caesarinput', ['inBus', globalInBus, 'preAmpBus', preAmpBus, 'globalOutBus', globalOutBus, 'feedbackBus', fxBus, 'masterFeedback', masterFeedback], looperGroup);
@@ -55,7 +57,6 @@ CaesarLooper {
 
 			this.addRead(1.0, 1.0, 0);
 
-			fadeBus.set(1);
 			this.fadeState_( FadeDefault.new ); // fade state machine
 		};
 
@@ -184,7 +185,7 @@ CaesarLooper {
 		}
 	}
 
-	// depends on freezeMode \current or \last
+	// implements freezeMode \last from Augustus Loop
 	freeze {
 		if ( isFrozen ) {
 			this.pr_freezeReset;
@@ -195,7 +196,7 @@ CaesarLooper {
 			OSCFunc({arg msg;
 				var offsetPos;
 				if (msg.at(2) == 34) { // 34 is id of the getPhase trigger
-					offsetPos = (msg[3] - (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
+					offsetPos = (msg[3] - (delay * server.sampleRate)).round.wrap(0, buf.numFrames); // TODO: neg or pos depending on neg or pos rate (reverse)?
 					offsetPos.postln;
 					phasorSynth.setn('resetPos', offsetPos, 'delay', delay, 'freeze', 1);
 				}
@@ -211,31 +212,6 @@ CaesarLooper {
 		phasorSynth.set('freeze', 0);
 		isFrozen = false;
 	}
-
-	// set phasor rate to 0, change write offset
-/*	reverse {
-		var offset, rate;
-		if ( isReversed.not ) {
-			offset = 2 * ( delay * server.sampleRate ).round;
-			rate = -1;
-		} {
-			offset = 0;
-			rate = 1;
-		};
-		OSCFunc({ arg msg;
-			msg.postln;
-			if ( msg.at(2) == 35 ) {
-				server.makeBundle(nil, {
-					// set write offset
-					writeSynth.set( 'offset', offset );
-					// toggle phasor rate
-					phasorSynth.set('rate', rate);
-				});
-				isReversed = isReversed.not;
-			}
-		}, '/tr', server.addr, nil, [phasorSynth.nodeID] ).oneShot;
-		phasorSynth.set('rate', 0);
-	}*/
 
 	reverse {
 		var offset, rate;
@@ -347,6 +323,7 @@ CaesarLooper {
 		fadeBus.free;
 		buf.free;
 		phasorSynth.free;
+		phasorBus.free;
 		// TODO: clean up shit in syncGroups
 	}
 
@@ -366,24 +343,17 @@ CaesarLooper {
 				Out.ar( globalOutBus, inputStereo * dryLevel ); // dry signal
 				Out.ar( preAmpBus, (sig * inputLevel) + (feedbackIn * masterFeedback * pr_feedback) );
 			}).add;
-			//
-			// SynthDef('caesarphasor', {arg buf, phasorBus=101, rate=1, pitchInertia=1;
-			// 	var phaseRate = Lag2.kr( rate, pitchInertia );
-			// 	var phase = Phasor.ar( 0, BufRateScale.kr(buf) * phaseRate , 0, BufFrames.kr(buf) );
-			// 	Out.ar(phasorBus, phase);
-			// }).add;
-			//
 
 			SynthDef('caesarphasor', {arg buf, phasorBus=101, rate=1, pitchInertia=1, t_getPhase=0, resetPos=0, freeze=0, delay=2;
-				var freezer = TDuty.kr(delay, Changed.kr(freeze), 1 );
+				var freezer = TDuty.kr(delay, Changed.kr(freeze), 1 ); // triggers
 				var phaseRate = Lag2.kr( rate, pitchInertia );
 				var phase = Phasor.ar( Select.kr(freeze, [0, freezer]),
 					BufRateScale.kr(buf) * phaseRate,
 					0,
 					BufFrames.kr(buf),
-					resetPos ).round; // TODO: does this work???
+					resetPos ).round;
 				SendTrig.kr(t_getPhase, 34, phase);
-				SendTrig.kr( phaseRate.abs < 0.001, 35, 1);
+				//SendTrig.kr( phaseRate.abs < 0.001, 35, 1);
 				Out.ar(phasorBus, phase);
 			}).add;
 
