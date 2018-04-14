@@ -12,7 +12,7 @@ CaesarLooper {
 	var <phasorSynth, <inputSynth, <reads, <writeSynth, <fxSynth, <mixSynth, <triggerSynth,  triggerOSCFunc;
 	var timeAtRecStart, <isRecording=false, timeAtTapStart, <isTapping=false, <isTriggering=false, <triggerLevel;
 	var <pitchInertia=0.0, <delayInertiaFadeTime=0.02, <>delayInertia=false;
-	var <isFrozen=false, <isReversed=false, <reverseRout, <monoize=0.0, <initialPan=0.0;
+	var <isFrozen=false, <isReversed=false, <freezeRout, <monoize=0.0, <initialPan=0.0;
 	var <delay=2.0, <masterFeedback=0.5, <dryLevel=1.0, <effectLevel=0.8, <inputLevel=1.0;
 	var <>fadeInTime=3.0, <>fadeOutTime=3.0, <>fadeOutCompleteAction=\none, <fadeState, <>fadeSynth, <>fadeOSCFunc;
 	var <>punchInInputLevel=1.0, <>punchOutInputLevel=0.0, <>pisil=true, <>posil=true;
@@ -195,12 +195,32 @@ CaesarLooper {
 			// get current phase, set end to current phase minus offset, trigger phaser, beware of wrapping issues
 			OSCFunc({arg msg;
 				var offsetPos;
-				if (msg.at(2) == 34) { // 34 is id of the getPhase trigger
-					offsetPos = (msg[3] - (delay * server.sampleRate)).round.wrap(0, buf.numFrames); // TODO: neg or pos depending on neg or pos rate (reverse)?
-					offsetPos.postln;
-					phasorSynth.setn('resetPos', offsetPos, 'delay', delay, 'freeze', 1);
+				if (isReversed) {
+					offsetPos = (msg[3] + (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
+				} {
+					offsetPos = (msg[3] - (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
+				};
+				offsetPos.postln;
+				// Routine
+				freezeRout = fork {
+					loop {
+						// make OSCFunc that triggers when writeSynth has ended
+						OSCFunc({
+							server.makeBundle(nil, {
+								phasorSynth.set('resetPos', offsetPos, 't_trigFromResetPos', 1);
+								writeSynth = Synth('caesarwrite', ['buf', buf, 'preAmpBus', preAmpBus, 'phasorBus', phasorBus], looperGroup, 'addToTail');
+							});
+
+							this.changed(\make); // notify reads TODO: add to bundle!!??
+						}, '/n_end', argTemplate:[writeSynth.nodeID]).oneShot;
+						// end write and reads. TODO: bundle them??
+						this.changed(\release);
+						writeSynth.release;
+						delay.wait;
+					}
 				}
-			}, '/tr').oneShot;
+			}, '/tr', argTemplate:[nil, 34]).oneShot;
+
 			// trigger OSCFunc
 			phasorSynth.set('t_getPhase', 1);
 			isFrozen = true;
@@ -208,6 +228,7 @@ CaesarLooper {
 	}
 
 	pr_freezeReset {
+		freezeRout.stop;
 		inputSynth.set('feedbackBus', fxBus);
 		phasorSynth.set('freeze', 0);
 		isFrozen = false;
@@ -230,8 +251,7 @@ CaesarLooper {
 			this.pr_newSynthsOnReverse(newPhasePos, rate, inert); // make new write, phasor and reads
 
 		}, '/tr', argTemplate:[nil, 34]).oneShot; // 34 is id of the getPhase trigger
-		// now trigger phasor to get phase position
-		phasorSynth.set('t_getPhase', 1);
+		phasorSynth.set('t_getPhase', 1); // get phase position
 	}
 
 	// set phase to 0, release write and reads, set phase and create new write and reads
@@ -245,9 +265,8 @@ CaesarLooper {
 				isReversed = isReversed.not;
 				this.changed(\make); // notify reads
 			}, '/n_end', argTemplate:[writeSynth.nodeID]).oneShot;
-			writeSynth.release;
 			this.changed(\release);
-			"new synths are being made".postln;
+			writeSynth.release;
 		}, \tr, argTemplate:[nil, 35]).oneShot; // phasor sends trigger 35 when rate approaches 0
 		phasorSynth.set('pitchInertia', inert, 'rate', 0);
 	}
@@ -376,7 +395,7 @@ CaesarLooper {
 				Out.ar(phasorBus, phase);
 			}).add;
 
-			SynthDef('caesarwrite', {arg buf, preAmpBus, phasorBus, gate=1, fadeIn=0.05, fadeOut=0.01;
+			SynthDef('caesarwrite', {arg buf, preAmpBus, phasorBus, gate=1, fadeIn=0.05, fadeOut=0.05;
 				var input = In.ar(preAmpBus, 2);
 				var phase = Wrap.ar( In.ar(phasorBus, 1), 0, BufFrames.kr(buf) );
 				var env = EnvGen.kr(Env.asr(fadeIn, 1, fadeOut), gate, doneAction:2);
@@ -608,9 +627,6 @@ CaesarRead {
 			synth.set('fade', caesar.delayInertiaFadeTime);
 		} { \pitchInertia } {
 			synth.set('pitchInertia', caesar.pitchInertia);
-		} {\reverse} {
-			this.release;
-			this.make;
 		} { \release } {
 			this.release;
 		} { \make } {
