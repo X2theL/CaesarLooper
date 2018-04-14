@@ -213,23 +213,48 @@ CaesarLooper {
 		isFrozen = false;
 	}
 
+	// new reverse creates new reads. write and phasor
 	reverse {
-		var offset, rate;
-		if ( isReversed.not ) {
-			offset = 2 * ( delay * server.sampleRate ).round;
-			rate = -1;
-		} {
-			offset = 0;
-			rate = 1;
-		};
-		writeSynth.free;
-		server.makeBundle(nil, {
-			// new write synth with offset
-			writeSynth = Synth('caesarwrite', ['buf', buf, 'preAmpBus', preAmpBus, 'phasorBus', phasorBus, 'offset', offset], looperGroup, 'addToTail');
-			// toggle phasor rate
-			phasorSynth.set('rate', rate);
-		});
-		isReversed = isReversed.not;
+		var bundle, rate;
+
+		OSCFunc({arg msg;
+			var newPhasePos;
+			if (msg.at(2) == 34) { // 34 is id of the getPhase trigger
+				if (isReversed) {
+					newPhasePos = (msg[3] + (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
+					rate = 1;
+				} {
+					newPhasePos = (msg[3] - (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
+					rate = -1;
+				};
+				this.pr_newSynths(newPhasePos, rate, true); // make new write, phasor and reads
+
+			}
+		}, '/tr').oneShot;
+		// now trigger phasor to get phase position
+		phasorSynth.set('t_getPhase', 1);
+	}
+
+	// TODO: check if I can use this for the freeze function as well
+	pr_newSynths { arg phasePos, rate, rev=false;
+		OSCFunc({arg msg;
+			if (msg.at(2) == 35) { // only use this trig id
+				writeSynth.release;
+				server.makeBundle(0.1, { // wait till old write synth is released
+					phasorSynth.free;
+					phasorSynth = Synth('caesarphasor',
+						['buf', buf, 'phasorBus', phasorBus, 'pitchInertia', pitchInertia, 'resetPos', phasePos, 'rate', rate],
+						phasorGroup
+					);
+					writeSynth = Synth('caesarwrite', ['buf', buf, 'preAmpBus', preAmpBus, 'phasorBus', phasorBus], looperGroup, 'addToTail');
+				});
+				if (rev) {isReversed = isReversed.not};
+				this.changed(\reverse); // notify reads
+				"new synths are being made".postln;
+			}
+		}, \tr).oneShot;
+
+		phasorSynth.set('rate', 0);
 	}
 
 	// cannot be engaged while tap recording and is reset by it
@@ -344,23 +369,25 @@ CaesarLooper {
 				Out.ar( preAmpBus, (sig * inputLevel) + (feedbackIn * masterFeedback * pr_feedback) );
 			}).add;
 
-			SynthDef('caesarphasor', {arg buf, phasorBus=101, rate=1, pitchInertia=1, t_getPhase=0, resetPos=0, freeze=0, delay=2;
-				var freezer = TDuty.kr(delay, Changed.kr(freeze), 1 ); // triggers
+			// sends notification when rate approaches 0
+			SynthDef('caesarphasor', {arg buf, phasorBus=101, rate=1, pitchInertia=1, t_getPhase=0, resetPos=0, t_trigFromResetPos=1, freeze=0, delay=2;
+				//var freezer = TDuty.kr(delay, Changed.kr(freeze), 1 ); // triggers
 				var phaseRate = Lag2.kr( rate, pitchInertia );
-				var phase = Phasor.ar( Select.kr(freeze, [0, freezer]),
+				var phase = Phasor.ar( t_trigFromResetPos,
 					BufRateScale.kr(buf) * phaseRate,
 					0,
 					BufFrames.kr(buf),
 					resetPos ).round;
 				SendTrig.kr(t_getPhase, 34, phase);
-				//SendTrig.kr( phaseRate.abs < 0.001, 35, 1);
+				SendTrig.kr( phaseRate.abs < 0.001, 35, 1);
 				Out.ar(phasorBus, phase);
 			}).add;
 
-			SynthDef('caesarwrite', {arg buf, preAmpBus, phasorBus, offset=0;
+			SynthDef('caesarwrite', {arg buf, preAmpBus, phasorBus, gate=1, fade=0.05;
 				var input = In.ar(preAmpBus, 2);
-				var phase = Wrap.ar( In.ar(phasorBus, 1) - offset, 0, BufFrames.kr(buf) );
-				IBufWr.ar(input, buf, phase, 1);
+				var phase = Wrap.ar( In.ar(phasorBus, 1), 0, BufFrames.kr(buf) );
+				var env = EnvGen.kr(Env.asr(fade, 1, fade), gate, doneAction:2);
+				IBufWr.ar(input * env, buf, phase, 1);
 			}).add;
 
 			// TODO: make swappable, put before caesarmix
@@ -541,7 +568,7 @@ CaesarRead {
 		}
 	}
 
-	make {
+	make { arg bundle;
 		synth = Synth('caesarread', [
 			'buf', caesar.buf,
 			'phasorBus', caesar.phasorBus,
@@ -556,8 +583,12 @@ CaesarRead {
 		], caesar.inputSynth, 'addAfter');
 	}
 
+	// checks if caesar is reversed
 	pr_offset {
 		var offset = ( caesar.delay * caesar.server.sampleRate * divisor ).round;
+		if (caesar.isReversed) {
+			offset = offset.neg;
+		};
 		^offset;
 	}
 
@@ -569,7 +600,7 @@ CaesarRead {
 		switch ( what ) { \recStop } {
 			this.release;
 			this.make;
-		} { \delay } {
+		} { \delay } { // TODO: different when reversed
 			if ( caesar.delayInertia ) {
 				synth.set('offset', this.pr_offset );
 			} {
@@ -584,6 +615,9 @@ CaesarRead {
 			synth.set('fade', caesar.delayInertiaFadeTime);
 		} { \pitchInertia } {
 			synth.set('pitchInertia', caesar.pitchInertia);
+		} {\reverse} {
+			this.release;
+			this.make;
 		};
 	}
 
@@ -605,7 +639,7 @@ CaesarRead {
 	*initClass {
 		ServerBoot.add({
 			// reads offset ahead of write synth except when reversed
-			SynthDef('caesarread', {arg buf, phasorBus, readBus, amp=1.0, pan=0, gate=1, fade=0.1, pitchInertia=0.4, offset=10000, lfoFreq, lfoDepth;
+			SynthDef('caesarread', {arg buf, phasorBus, readBus, amp=1.0, pan=0, gate=1, fade=0.05, pitchInertia=0.4, offset=10000, lfoFreq, lfoDepth, t_getPhase=0;
 				var phase, sig;
 
 				phase = In.ar( phasorBus, 1 ) - Lag2.ar(K2A.ar(offset), pitchInertia);
@@ -613,6 +647,7 @@ CaesarRead {
 				sig = BufRd.ar(2, buf, phase, 0, 4) * Lag.kr(amp, fade) * EnvGen.ar( Env.asr(fade, 1, fade), gate, doneAction:2 );
 				pan = pan + 1; // magic pan solution
 				sig = [ pan.linlin( 1, 2, 1, 0 ) * sig[0], pan.clip( 0, 1 ) * sig[1] ];
+				SendTrig.kr(t_getPhase, 44, phase);
 				Out.ar( readBus, sig );
 			}).add;
 		}, \all);
