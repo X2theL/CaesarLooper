@@ -214,53 +214,47 @@ CaesarLooper {
 	}
 
 	// new reverse creates new reads. write and phasor
-	reverse {
-		var bundle, rate;
+	reverse { arg instant=false;
+		var inert, rate;
 
 		OSCFunc({arg msg;
 			var newPhasePos;
-			if (msg.at(2) == 34) { // 34 is id of the getPhase trigger
-				if (isReversed) {
-					newPhasePos = (msg[3] + (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
-					rate = 1;
-				} {
-					newPhasePos = (msg[3] - (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
-					rate = -1;
-				};
-				this.pr_newSynths(newPhasePos, rate, true); // make new write, phasor and reads
+			if (isReversed) {
+				newPhasePos = (msg[3] + (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
+				rate = 1;
+			} {
+				newPhasePos = (msg[3] - (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
+				rate = -1;
+			};
+			if (instant) { inert = 0 } { inert = pitchInertia };
+			this.pr_newSynthsOnReverse(newPhasePos, rate, inert); // make new write, phasor and reads
 
-			}
-		}, '/tr').oneShot;
+		}, '/tr', argTemplate:[nil, 34]).oneShot; // 34 is id of the getPhase trigger
 		// now trigger phasor to get phase position
 		phasorSynth.set('t_getPhase', 1);
 	}
 
-	// TODO: check if I can use this for the freeze function as well
-	pr_newSynths { arg phasePos, rate, rev=false;
+	// set phase to 0, release write and reads, set phase and create new write and reads
+	pr_newSynthsOnReverse { arg phasePos, rate, inert=0;
 		OSCFunc({arg msg;
-			if (msg.at(2) == 35) { // only use this trig id
-				writeSynth.release;
-				server.makeBundle(0.1, { // wait till old write synth is released
-					phasorSynth.free;
-					phasorSynth = Synth('caesarphasor',
-						['buf', buf, 'phasorBus', phasorBus, 'pitchInertia', pitchInertia, 'resetPos', phasePos, 'rate', rate],
-						phasorGroup
-					);
+			OSCFunc({ // when old write synth has ended
+				server.makeBundle(nil, {
+					phasorSynth.set('resetPos', phasePos, 'rate', rate, 'pitchInertia', inert, 't_trigFromResetPos', 1);
 					writeSynth = Synth('caesarwrite', ['buf', buf, 'preAmpBus', preAmpBus, 'phasorBus', phasorBus], looperGroup, 'addToTail');
 				});
-				if (rev) {isReversed = isReversed.not};
-				this.changed(\reverse); // notify reads
-				"new synths are being made".postln;
-			}
-		}, \tr).oneShot;
-
-		phasorSynth.set('rate', 0);
+				isReversed = isReversed.not;
+				this.changed(\make); // notify reads
+			}, '/n_end', argTemplate:[writeSynth.nodeID]).oneShot;
+			writeSynth.release;
+			this.changed(\release);
+			"new synths are being made".postln;
+		}, \tr, argTemplate:[nil, 35]).oneShot; // phasor sends trigger 35 when rate approaches 0
+		phasorSynth.set('pitchInertia', inert, 'rate', 0);
 	}
 
 	// cannot be engaged while tap recording and is reset by it
 	tapLength {
 		if (isFrozen) { this.pr_freezeReset };
-		if ( isReversed ) { this.reverse };
 		if (isRecording.not) {
 			if (isTapping) {
 				this.delay_( (thisThread.seconds - timeAtTapStart).clip(0.005, maxDelay) );
@@ -315,7 +309,6 @@ CaesarLooper {
 			isRecording = false;
 		} {
 			if (isFrozen) { this.pr_freezeReset };
-			if ( isReversed ) { this.reverse };
 			inputSynth.set('pr_feedback', 0.0); // cut feedback
 			this.effectLevel_(0);
 			timeAtRecStart = thisThread.seconds;
@@ -379,14 +372,14 @@ CaesarLooper {
 					BufFrames.kr(buf),
 					resetPos ).round;
 				SendTrig.kr(t_getPhase, 34, phase);
-				SendTrig.kr( phaseRate.abs < 0.001, 35, 1);
+				SendTrig.kr( phaseRate.abs < 0.0001, 35, 1);
 				Out.ar(phasorBus, phase);
 			}).add;
 
-			SynthDef('caesarwrite', {arg buf, preAmpBus, phasorBus, gate=1, fade=0.05;
+			SynthDef('caesarwrite', {arg buf, preAmpBus, phasorBus, gate=1, fadeIn=0.05, fadeOut=0.01;
 				var input = In.ar(preAmpBus, 2);
 				var phase = Wrap.ar( In.ar(phasorBus, 1), 0, BufFrames.kr(buf) );
-				var env = EnvGen.kr(Env.asr(fade, 1, fade), gate, doneAction:2);
+				var env = EnvGen.kr(Env.asr(fadeIn, 1, fadeOut), gate, doneAction:2);
 				IBufWr.ar(input * env, buf, phase, 1);
 			}).add;
 
@@ -568,7 +561,7 @@ CaesarRead {
 		}
 	}
 
-	make { arg bundle;
+	make {
 		synth = Synth('caesarread', [
 			'buf', caesar.buf,
 			'phasorBus', caesar.phasorBus,
@@ -617,6 +610,10 @@ CaesarRead {
 			synth.set('pitchInertia', caesar.pitchInertia);
 		} {\reverse} {
 			this.release;
+			this.make;
+		} { \release } {
+			this.release;
+		} { \make } {
 			this.make;
 		};
 	}
