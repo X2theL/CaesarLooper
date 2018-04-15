@@ -202,7 +202,7 @@ CaesarLooper {
 			this.pr_freezeReset;
 		} {
 			// cut input, switch inputSynth feedbackBus from fxBus to readBus
-			inputSynth.set('feedbackBus', readBus);
+			inputSynth.set('feedbackBus', readBus, 'pr_inputLevel', 0);
 			OSCFunc({arg msg;
 				// Routine
 				freezeRout = fork {
@@ -224,6 +224,12 @@ CaesarLooper {
 			phasorSynth.set('t_getPhase', 1);
 			isFrozen = true;
 		}
+	}
+
+	pr_freezeReset {
+		freezeRout.stop;
+		inputSynth.set('feedbackBus', fxBus, 'pr_inputLevel', 1);
+		isFrozen = false;
 	}
 
 	// release write and all read synths together
@@ -255,12 +261,6 @@ CaesarLooper {
 			bundle.add(i.newMsg);
 		});
 		server.listSendBundle(nil, bundle);
-	}
-
-	pr_freezeReset {
-		freezeRout.stop;
-		inputSynth.set('feedbackBus', fxBus);
-		isFrozen = false;
 	}
 
 	// calculate new phase position with respect to isReversed and delay
@@ -399,7 +399,7 @@ CaesarLooper {
 
 		ServerBoot.add({
 			// synth for initial panning, stereoization and feedback mixing
-			SynthDef('caesarinput', {arg inBus=0, preAmpBus=0, globalOutBus=0, feedbackBus=88, inputLevel=1.0, dryLevel=1.0, masterFeedback=0.8, pr_feedback=1.0, monoize=0.0, initialPan=0.0;
+			SynthDef('caesarinput', {arg inBus=0, preAmpBus=0, globalOutBus=0, feedbackBus=88, inputLevel=1.0, pr_inputLevel=1.0, dryLevel=1.0, masterFeedback=0.8, pr_feedback=1.0, monoize=0.0, initialPan=0.0;
 
 				var feedbackIn = InFeedback.ar(feedbackBus, 2); // feedback output from fxBus
 				var inputStereo = In.ar(inBus, 2);
@@ -408,7 +408,7 @@ CaesarLooper {
 				var sig = (inputStereo * (1 - monoize)) + (pannedMono * monoize);
 
 				Out.ar( globalOutBus, inputStereo * dryLevel ); // dry signal
-				Out.ar( preAmpBus, (sig * inputLevel) + (feedbackIn * masterFeedback * pr_feedback) );
+				Out.ar( preAmpBus, (sig * inputLevel * pr_inputLevel) + (feedbackIn * masterFeedback * pr_feedback) );
 			}).add;
 
 			// sends notification when rate approaches 0
