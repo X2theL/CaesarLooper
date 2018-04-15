@@ -1,7 +1,6 @@
 // a reverse engineered version of the awesome vst plugin by Expert Sleepers
 // TODO:
 // - sync groups
-// - make globalInBus and globalOutBus work with private busses
 CaesarLooper {
 	classvar <syncGroups, <phasorGroup;
 
@@ -30,12 +29,8 @@ CaesarLooper {
 			};
 			looperGroup = Group.new(server, 'addToTail'); // always at the bottom
 			phasorBus = Bus.audio(server, 2);
-			if (in.isKindOf(Bus).not) { // set to first hardware in
-				globalInBus = Bus.new('audio', server.options.numOutputBusChannels, 2, server);
-			};
-			if (out.isKindOf(Bus).not) { // set to first hardware out
-				globalOutBus = Bus.new('audio', 0, 2, server);
-			};
+			globalInBus = in ?? { Bus.new('audio', server.options.numOutputBusChannels, 2, server) }; // default: hardware in 0,1
+			globalOutBus = out ?? { Bus.new('audio', 0, 2, server) }; // default: hardware out 0,1
 			preAmpBus = Bus.audio(server, 2); // out bus of input synth; write synth reads from this
 			readBus = Bus.audio(server, 2); // out bus for read synths
 			fxBus = Bus.audio(server, 2); // out bus for fx, aka feedbackBus
@@ -82,6 +77,19 @@ CaesarLooper {
 	// swaps the default post read fx for the provided one
 	playFX { arg fx;
 
+	}
+
+	// set global out bus
+	globalOutBus_ { arg newBus;
+		globalOutBus = newBus;
+		inputSynth.set('globalOutBus', globalOutBus);
+		mixSynth.set('globalOutBus', globalOutBus);
+	}
+
+	// set global input bus
+	globalInBus_ { arg newBus;
+		globalInBus = newBus;
+		inputSynth.set('inBus', globalOutBus);
 	}
 
 	// lo: 0, hi: 1.3
@@ -377,10 +385,12 @@ CaesarLooper {
 	free {
 		reads.do(_.free);
 		looperGroup.free;
-		fadeBus.free;
-		buf.free;
 		phasorSynth.free;
+		fadeBus.free;
 		phasorBus.free;
+		readBus.free;
+		fxBus.free;
+		buf.free;
 		// TODO: clean up shit in syncGroups
 	}
 
