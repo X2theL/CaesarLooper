@@ -190,32 +190,24 @@ CaesarLooper {
 		if ( isFrozen ) {
 			this.pr_freezeReset;
 		} {
-			// cut switch inputSynth feedbackBus from fxBus to readBus
+			// cut input, switch inputSynth feedbackBus from fxBus to readBus
 			inputSynth.set('feedbackBus', readBus);
 			// get current phase, set end to current phase minus offset, trigger phaser, beware of wrapping issues
 			OSCFunc({arg msg;
-				var offsetPos;
-				if (isReversed) {
-					offsetPos = (msg[3] + (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
-				} {
-					offsetPos = (msg[3] - (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
-				};
-				offsetPos.postln;
 				// Routine
 				freezeRout = fork {
 					loop {
 						// make OSCFunc that triggers when writeSynth has ended
 						OSCFunc({
 							server.makeBundle(nil, {
-								phasorSynth.set('resetPos', offsetPos, 't_trigFromResetPos', 1);
+								phasorSynth.set('resetPos', this.pr_calcPhasePos(msg[3])[0], 't_trigFromResetPos', 1);
 								writeSynth = Synth('caesarwrite', ['buf', buf, 'preAmpBus', preAmpBus, 'phasorBus', phasorBus], looperGroup, 'addToTail');
 							});
 
 							this.changed(\make); // notify reads TODO: add to bundle!!??
 						}, '/n_end', argTemplate:[writeSynth.nodeID]).oneShot;
-						// end write and reads. TODO: bundle them??
-						this.changed(\release);
-						writeSynth.release;
+						// end write and reads
+						this.pr_bundledRelease;
 						delay.wait;
 					}
 				}
@@ -227,6 +219,16 @@ CaesarLooper {
 		}
 	}
 
+	// release write and all read synths together
+	pr_bundledRelease {
+		var bundle = List.new;
+		bundle.add(writeSynth.releaseMsg);
+		reads.do({ arg i;
+			bundle.add(i.releaseMsg);
+		});
+		server.listSendBundle(nil, bundle);
+	}
+
 	pr_freezeReset {
 		freezeRout.stop;
 		inputSynth.set('feedbackBus', fxBus);
@@ -234,21 +236,27 @@ CaesarLooper {
 		isFrozen = false;
 	}
 
+	// calculate new phase position with respect to isReversed and delay
+	pr_calcPhasePos { arg oldPhase;
+		var newPhasePos, rate;
+			if (isReversed) {
+				newPhasePos = (oldPhase + (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
+				rate = 1;
+			} {
+				newPhasePos = (oldPhase - (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
+				rate = -1;
+			};
+		^[newPhasePos, rate];
+	}
+
 	// new reverse creates new reads. write and phasor
 	reverse { arg instant=false;
 		var inert, rate;
 
 		OSCFunc({arg msg;
-			var newPhasePos;
-			if (isReversed) {
-				newPhasePos = (msg[3] + (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
-				rate = 1;
-			} {
-				newPhasePos = (msg[3] - (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
-				rate = -1;
-			};
+			var phase = this.pr_calcPhasePos(msg[3]);
 			if (instant) { inert = 0 } { inert = pitchInertia };
-			this.pr_newSynthsOnReverse(newPhasePos, rate, inert); // make new write, phasor and reads
+			this.pr_newSynthsOnReverse(phase[0], phase[1], inert); // make new write, phasor and reads
 
 		}, '/tr', argTemplate:[nil, 34]).oneShot; // 34 is id of the getPhase trigger
 		phasorSynth.set('t_getPhase', 1); // get phase position
@@ -258,6 +266,7 @@ CaesarLooper {
 	pr_newSynthsOnReverse { arg phasePos, rate, inert=0;
 		OSCFunc({arg msg;
 			OSCFunc({ // when old write synth has ended
+				"making new write synth".postln;
 				server.makeBundle(nil, {
 					phasorSynth.set('resetPos', phasePos, 'rate', rate, 'pitchInertia', inert, 't_trigFromResetPos', 1);
 					writeSynth = Synth('caesarwrite', ['buf', buf, 'preAmpBus', preAmpBus, 'phasorBus', phasorBus], looperGroup, 'addToTail');
@@ -265,8 +274,7 @@ CaesarLooper {
 				isReversed = isReversed.not;
 				this.changed(\make); // notify reads
 			}, '/n_end', argTemplate:[writeSynth.nodeID]).oneShot;
-			this.changed(\release);
-			writeSynth.release;
+			this.pr_bundledRelease; // release write and reads
 		}, \tr, argTemplate:[nil, 35]).oneShot; // phasor sends trigger 35 when rate approaches 0
 		phasorSynth.set('pitchInertia', inert, 'rate', 0);
 	}
@@ -606,6 +614,11 @@ CaesarRead {
 
 	release {
 		synth.release;
+	}
+
+	// used by freeze and reverse to bundle write and reads release
+	releaseMsg { arg bundle;
+		^synth.releaseMsg;
 	}
 
 	update { arg changer, what ...args;
