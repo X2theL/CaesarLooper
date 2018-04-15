@@ -1,7 +1,5 @@
 // a reverse engineered version of the awesome vst plugin by Expert Sleepers
 // TODO:
-// - new reverse function that keeps the write synth at position and changes reads!
-// - new freeze function that is language controlled (Routine)
 // - sync groups
 // - make globalInBus and globalOutBus work with private busses
 CaesarLooper {
@@ -10,8 +8,8 @@ CaesarLooper {
 	var <maxDelay, <server, <syncMode=\none, <syncGroup, <beats=4, <triplet=false;
 	var <buf, <looperGroup, <phasorBus, <globalInBus, <preAmpBus, <readBus, <fxBus, <globalOutBus, <fadeBus;
 	var <phasorSynth, <inputSynth, <reads, <writeSynth, <fxSynth, <mixSynth, <triggerSynth,  triggerOSCFunc;
-	var timeAtRecStart, <isRecording=false, timeAtTapStart, <isTapping=false, <isTriggering=false, <triggerLevel;
-	var <pitchInertia=0.0, <delayInertiaFadeTime=0.02, <>delayInertia=false;
+	var timeAtRecStart, <isRecording=false, timeAtTapStart, locked=false, phasePos, <isTapping=false, <isTriggering=false, <triggerLevel;
+	var <pitchInertia=0.0, <delayInertiaFadeTime=0.05, <>delayInertia=false;
 	var <isFrozen=false, <isReversed=false, <freezeRout, <monoize=0.0, <initialPan=0.0;
 	var <delay=2.0, <masterFeedback=0.5, <dryLevel=1.0, <effectLevel=0.8, <inputLevel=1.0;
 	var <>fadeInTime=3.0, <>fadeOutTime=3.0, <>fadeOutCompleteAction=\none, <fadeState, <>fadeSynth, <>fadeOSCFunc;
@@ -138,7 +136,13 @@ CaesarLooper {
 	// lo: -12, hi: 12
 	pitch_ { arg newVal;
 		pitch = newVal.clip(-12, 12);
-		phasorSynth.set('rate', pitch.midiratio);
+		phasorSynth.set('rate', this.getRate);
+	}
+
+	getRate {
+		var theRate = pitch.midiratio;
+		if (isReversed) { theRate = theRate.neg };
+		^theRate;
 	}
 
 	// lo: 0, hi: 20
@@ -159,10 +163,8 @@ CaesarLooper {
 	}
 
 	tapeStart {
-		var newRatio = pitch.midiratio;
 		if (isFrozen) { this.pr_freezeReset };
-		if (isReversed) { newRatio = newRatio * -1 };
-		phasorSynth.set('rate', newRatio);
+		phasorSynth.set('rate', this.getRate);
 	}
 
 	// create a one shot trigger synth and OSCFunc that activates tapRec
@@ -187,27 +189,24 @@ CaesarLooper {
 
 	// implements freezeMode \last from Augustus Loop
 	freeze {
+		if (locked or:{ isRecording }) {"locked".postln; ^nil};
 		if ( isFrozen ) {
 			this.pr_freezeReset;
 		} {
 			// cut input, switch inputSynth feedbackBus from fxBus to readBus
 			inputSynth.set('feedbackBus', readBus);
-			// get current phase, set end to current phase minus offset, trigger phaser, beware of wrapping issues
 			OSCFunc({arg msg;
 				// Routine
 				freezeRout = fork {
+					this.pr_calcPhasePos(msg[3]);
 					loop {
-						// make OSCFunc that triggers when writeSynth has ended
-						OSCFunc({
-							server.makeBundle(nil, {
-								phasorSynth.set('resetPos', this.pr_calcPhasePos(msg[3])[0], 't_trigFromResetPos', 1);
-								writeSynth = Synth('caesarwrite', ['buf', buf, 'preAmpBus', preAmpBus, 'phasorBus', phasorBus], looperGroup, 'addToTail');
-							});
-
-							this.changed(\make); // notify reads TODO: add to bundle!!??
-						}, '/n_end', argTemplate:[writeSynth.nodeID]).oneShot;
-						// end write and reads
-						this.pr_bundledRelease;
+						if (locked.not) {
+							// when writeSynth has ended
+							OSCFunc({
+								this.pr_bundledMake;
+							}, '/n_end', argTemplate:[writeSynth.nodeID]).oneShot;
+							this.pr_bundledRelease; // end write and reads
+						};
 						delay.wait;
 					}
 				}
@@ -229,54 +228,66 @@ CaesarLooper {
 		server.listSendBundle(nil, bundle);
 	}
 
+	// create new write/reads and set phasor in freezeRout and reverse
+	pr_bundledMake {
+		var bundle = List.new;
+		writeSynth = Synth.basicNew('caesarwrite', server);
+		bundle.add( writeSynth.newMsg(looperGroup, [
+			'buf', buf,
+			'preAmpBus', preAmpBus,
+			'phasorBus', phasorBus
+		], 'addToTail') );
+		bundle.add( phasorSynth.setMsg(
+			't_trigFromResetPos', 1,
+			'resetPos', phasePos,
+			'rate', this.getRate,
+			'pitchInertia', pitchInertia
+		) );
+		reads.do({ arg i;
+			bundle.add(i.newMsg);
+		});
+		server.listSendBundle(nil, bundle);
+	}
+
 	pr_freezeReset {
 		freezeRout.stop;
 		inputSynth.set('feedbackBus', fxBus);
-		phasorSynth.set('freeze', 0);
 		isFrozen = false;
 	}
 
 	// calculate new phase position with respect to isReversed and delay
 	pr_calcPhasePos { arg oldPhase;
-		var newPhasePos, rate;
+		var newPhasePos;
 			if (isReversed) {
 				newPhasePos = (oldPhase + (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
-				rate = 1;
 			} {
 				newPhasePos = (oldPhase - (delay * server.sampleRate)).round.wrap(0, buf.numFrames);
-				rate = -1;
 			};
-		^[newPhasePos, rate];
+		phasePos = newPhasePos; // var for the freeze loop
 	}
 
 	// new reverse creates new reads. write and phasor
-	reverse { arg instant=false;
-		var inert, rate;
-
+	reverse {
+		if (locked or:{ isRecording }) {"locked".postln; ^nil};
+		locked = true; // don't let freeze get in the way while reversing
 		OSCFunc({arg msg;
-			var phase = this.pr_calcPhasePos(msg[3]);
-			if (instant) { inert = 0 } { inert = pitchInertia };
-			this.pr_newSynthsOnReverse(phase[0], phase[1], inert); // make new write, phasor and reads
+
+			OSCFunc({
+
+				OSCFunc({ // when old write synth has ended
+					"making new write synth".postln;
+					this.pr_calcPhasePos(msg[3]);
+					isReversed = isReversed.not; // BEFORE new synths get rate and offset
+					this.pr_bundledMake;
+					locked = false; // TODO: only safe when lock is released after phasor has reached new rate
+				}, '/n_end', argTemplate:[writeSynth.nodeID]).oneShot;
+				this.pr_bundledRelease;
+
+			}, \tr, argTemplate:[nil, 35]).oneShot; // phasor sends trigger 35 when rate approaches 0
+			phasorSynth.set('rate', 0);
 
 		}, '/tr', argTemplate:[nil, 34]).oneShot; // 34 is id of the getPhase trigger
 		phasorSynth.set('t_getPhase', 1); // get phase position
-	}
-
-	// set phase to 0, release write and reads, set phase and create new write and reads
-	pr_newSynthsOnReverse { arg phasePos, rate, inert=0;
-		OSCFunc({arg msg;
-			OSCFunc({ // when old write synth has ended
-				"making new write synth".postln;
-				server.makeBundle(nil, {
-					phasorSynth.set('resetPos', phasePos, 'rate', rate, 'pitchInertia', inert, 't_trigFromResetPos', 1);
-					writeSynth = Synth('caesarwrite', ['buf', buf, 'preAmpBus', preAmpBus, 'phasorBus', phasorBus], looperGroup, 'addToTail');
-				});
-				isReversed = isReversed.not;
-				this.changed(\make); // notify reads
-			}, '/n_end', argTemplate:[writeSynth.nodeID]).oneShot;
-			this.pr_bundledRelease; // release write and reads
-		}, \tr, argTemplate:[nil, 35]).oneShot; // phasor sends trigger 35 when rate approaches 0
-		phasorSynth.set('pitchInertia', inert, 'rate', 0);
 	}
 
 	// cannot be engaged while tap recording and is reset by it
@@ -325,6 +336,7 @@ CaesarLooper {
 	// can't call delay setter here because CaesarRead's update gets confused
 	tapRecord {
 		var newDelay;
+		if (locked) {"locked".postln; ^nil};
 		if (isTapping) {isTapping = false}; // aborts tapLength
 		if ( isRecording ) {
 			newDelay = (thisThread.seconds - timeAtRecStart).clip(0.005, maxDelay);
@@ -390,8 +402,7 @@ CaesarLooper {
 			}).add;
 
 			// sends notification when rate approaches 0
-			SynthDef('caesarphasor', {arg buf, phasorBus=101, rate=1, pitchInertia=1, t_getPhase=0, resetPos=0, t_trigFromResetPos=1, freeze=0, delay=2;
-				//var freezer = TDuty.kr(delay, Changed.kr(freeze), 1 ); // triggers
+			SynthDef('caesarphasor', {arg buf, phasorBus=101, rate=1, pitchInertia=1, t_getPhase=0, resetPos=0, t_trigFromResetPos=1, delay=2;
 				var phaseRate = Lag2.kr( rate, pitchInertia );
 				var phase = Phasor.ar( t_trigFromResetPos,
 					BufRateScale.kr(buf) * phaseRate,
@@ -616,6 +627,23 @@ CaesarRead {
 		synth.release;
 	}
 
+	// for bundling with write and phasor msgs
+	newMsg {
+		synth = Synth.basicNew('caesarread', caesar.server);
+		^synth.newMsg(caesar.inputSynth, [
+			'buf', caesar.buf,
+			'phasorBus', caesar.phasorBus,
+			'readBus', caesar.readBus,
+			'amp', level,
+			'pan', pan,
+			'fade', caesar.delayInertiaFadeTime,
+			'pitchInertia', caesar.pitchInertia,
+			'offset', this.pr_offset,
+			'lfoFreq', caesar.pitchLFOSpeed,
+			'lfoDepth', caesar.pitchLFODepth
+		], 'addAfter');
+	}
+
 	// used by freeze and reverse to bundle write and reads release
 	releaseMsg { arg bundle;
 		^synth.releaseMsg;
@@ -673,7 +701,7 @@ CaesarRead {
 				sig = BufRd.ar(2, buf, phase, 0, 4) * Lag.kr(amp, fade) * EnvGen.ar( Env.asr(fade, 1, fade), gate, doneAction:2 );
 				pan = pan + 1; // magic pan solution
 				sig = [ pan.linlin( 1, 2, 1, 0 ) * sig[0], pan.clip( 0, 1 ) * sig[1] ];
-				SendTrig.kr(t_getPhase, 44, phase);
+				//SendTrig.kr(t_getPhase, 44, phase);
 				Out.ar( readBus, sig );
 			}).add;
 		}, \all);
