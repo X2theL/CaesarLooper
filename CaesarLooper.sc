@@ -1,10 +1,12 @@
 // a reverse engineered version of the awesome vst plugin by Expert Sleepers
 // TODO:
-// - sync groups
+// - adjust delay length when changing pitch (fix delay option)
+// - make hot-swappable fx
+// - preset system
 CaesarLooper {
-	classvar <syncGroups, <phasorGroup;
+	classvar <all, <phasorGroup;
 
-	var <maxDelay, <server, <syncMode=\none, <syncGroup, <beats=4, <triplet=false;
+	var <maxDelay, <server, <syncMode=\none, <beats=4, <triplet=false;
 	var <buf, <looperGroup, <phasorBus, <globalInBus, <preAmpBus, <readBus, <fxBus, <globalOutBus, <fadeBus;
 	var <phasorSynth, <inputSynth, <reads, <writeSynth, <fxSynth, <mixSynth, <triggerSynth,  triggerOSCFunc;
 	var timeAtRecStart, <isRecording=false, timeAtTapStart, locked=false, phasePos, <isTapping=false, <isTriggering=false, <triggerLevel;
@@ -20,6 +22,7 @@ CaesarLooper {
 	}
 
 	init { arg in, out, smode, sgroup;
+		all.add(this);
 		server ?? {server = Server.default};
 		reads = List.new;
 		fork {
@@ -55,11 +58,42 @@ CaesarLooper {
 
 	}
 
-	// set syncGroup and deal with all consequences
-	syncGroup_ {arg newGroup;
-		if (syncGroup.isNil) { // there is no oldGroup
-
+	// modes: none, slave, master
+	syncMode_ {arg newMode;
+		syncMode = newMode;
+		switch (syncMode)
+		{ \none } {
+			all.do ({ arg i;
+				if ( i.dependants.findMatch(this) ) {
+					i.removeDependant(this)
+				};
+				if ( this.dependants.findMatch(i) ) {
+					this.removeDependant(i)
+				}
+			});
+		} { \slave } {
+			all.do ({ arg i;
+				if ( i.syncMode == \master ) {
+					i.addDependant(this)
+				}
+			});
+		} { \master } {
+			all.do ({ arg i;
+				if ( i.syncMode == \master and: i !== this) {
+					i.syncMode_(\none)
+				};
+				if ( i.syncMode == \slave ) {
+					this.addDependant(i)
+				};
+			});
 		}
+	}
+
+	// when I'm a slave I set my delay to the master's
+	update { arg changer, what ...args;
+		switch ( what )
+		{ \delay } { this.delay_(args[0]) }
+		{ \recStop } { this.delay_(args[0]) }
 	}
 
 	addRead { arg div=0.5, level=0.5, pan=0;
@@ -315,7 +349,7 @@ CaesarLooper {
 	delay_ { arg newVal=1;
 		if (isFrozen) { this.pr_freezeReset };
 		delay = newVal.clip(0.005, maxDelay);
-		this.changed( \delay );
+		this.changed( \delay, delay );
 	}
 
 	// beats can be set with or without changing delay time
@@ -349,7 +383,7 @@ CaesarLooper {
 		if ( isRecording ) {
 			newDelay = (thisThread.seconds - timeAtRecStart).clip(0.005, maxDelay);
 			delay = newDelay;
-			this.changed(\recStop);
+			this.changed(\recStop, delay);
 			this.effectLevel_(1);
 			inputSynth.set('pr_feedback', 1.0); // bring back feedback
 			if ( posil ) { this.inputLevel_( punchOutInputLevel ) };
@@ -391,11 +425,12 @@ CaesarLooper {
 		readBus.free;
 		fxBus.free;
 		buf.free;
-		// TODO: clean up shit in syncGroups
+		this.syncMode_(\none);
+		all.remove(this);
 	}
 
 	*initClass {
-		syncGroups = 16.collect({IdentitySet.new});
+		all = IdentitySet.new;
 
 		ServerBoot.add({
 			// synth for initial panning, stereoization and feedback mixing
@@ -663,7 +698,7 @@ CaesarRead {
 		switch ( what ) { \recStop } {
 			this.release;
 			this.make;
-		} { \delay } { // TODO: different when reversed
+		} { \delay } {
 			if ( caesar.delayInertia ) {
 				synth.set('offset', this.pr_offset );
 			} {
