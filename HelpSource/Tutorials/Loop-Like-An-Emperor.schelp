@@ -22,9 +22,9 @@ https://github.com/tremblap/IBufWr
 
 You also will need a sound source to feed it. CaesarLooper runs in stereo, because I was too lazy to build a mono option as well. Throughout the tutorial, I will be using the first two inputs from my audio interface which is the default.
 
-To really have fun with a looper - especially if you play an intruments that occupies both of your hands - you will want to map a couple of your favorite functions to a midi foot switch. There are other tutorials that cover this so I won't bother with it here. I'll just use a Mic plugged into a mixer that feeds the first two channels of my audio interface.
+To really have fun with a looper - especially if you play an intrument that occupies both of your hands - you will want to map a couple of your favorite functions to a midi foot switch. There are other tutorials that cover this so I won't bother with it here. I'll just use a Mic plugged into a mixer that feeds the first two channels of my audio interface.
 
-strong::Attention!:: This CaesarLooper is based on feedback loops. It's in the nature of feedback loops to sometimes get out of control and become REALLY LOUD. To reduce the risk of ear damage, choose a low enough basic volume, be especially careful when playing with the filter functions, create longer loops (so you can hear the danger coming) and always know where your volume knob is.
+strong::Attention!:: CaesarLooper is based on feedback loops. It's in the nature of feedback loops to sometimes get out of control and become REALLY LOUD. To reduce the risk of ear damage, choose a low enough basic volume, be especially careful when playing with the filter functions, create longer loops (so you can hear the danger coming) and always know where your volume knob is.
 
 Having said that, have fun! Let's go!
 
@@ -73,7 +73,7 @@ code::
 a.inputLevel_(0)
 ::
 
-Add to the loop
+Add noise (or beautiful music if you must) to the loop
 
 code::
 a.inputLevel_(1)
@@ -97,7 +97,7 @@ code::
 a.tapRecord
 ::
 
-// There is also a way to change the delay time by sending tapLenth twice. Let's use it to shorten our loop while it's running. Execute this twice within about a second
+There is also a way to change the delay time by sending tapLenth twice. Let's use it to shorten our loop while it's running. Execute this twice within about a second
 
 code::
 a.tapLength;
@@ -125,7 +125,7 @@ Congratulations! You have just scratched the surface of what CaesarLooper can do
 
 Section::Advanced Stuff
 
-How about some pitch changes? First record a loop (execute once to start, then again to stop recording)
+	How about some pitch changes? First record a loop:
 
 code::
 a.tapRecord
@@ -240,7 +240,7 @@ code::
 a.fade
 ::
 
-or you can do fadeOverride again to instantly get the volume up
+or you can do fadeOverride again to instantly get the volume back up
 
 code::
 a.fadeOverride
@@ -306,3 +306,72 @@ You'll notice that the loop is now actually 6 beats long again. The same size we
 code::
 a.triplet_(true, true)
 ::
+
+Section::Cold as ice
+
+In this section, we will use the built in fx synth in combination with the freeze method to create even glitchier sounds. Be aware though that we are entering the realm of unpredectability and possibly high level ugliness.
+
+CaesarLooper has a built in overdrive and filters that sit inside the feedback loop so that the processed signal from the loop output feeds back into the loop. This setup can be used to cause all sorts of audio mayhem.
+
+It also has a function called freeze that circumvents this mechanism so that we can play with the fx without either killing off the loop quickly or boosting it to dangerous levels. Like the reverse function, freeze is not perfect and will probably create some extra noise. I haven't found a better way to implement it without creating even more complexity. If you want to have a go at improving these functions, please do so and let me know if you succeed.
+
+Let's play a little. I suggest you create a loop of at least four seconds
+
+code::
+a.tapRecord
+::
+
+Engage freeze:
+
+code::
+a.freeze
+::
+
+Now you're safe to play with the fx:
+
+code::
+a.fxSynth.set('preGain', 8, 'postGain', 0.3, 'wet', 1)
+a.fxSynth.set('loDamp', -9)
+a.fxSynth.set('type', 1.8)
+a.fxSynth.set('wet', 0.3);
+a.fxSynth.set('wet', 1);
+::
+
+If you now 'unfreeze' the loop the overdrive and the filter will be applied again and again each time the loop repeats.
+
+code::
+a.freeze
+::
+
+Freeze the loop again when it becomes too nasty. Alternatively, take out the fx:
+
+code::
+a.fxSynth.set('wet', 0);
+// maybe you want to also clear it:
+a.clear
+::
+
+Section::Syncing multiple loopers
+
+But maybe one looper is not enough for you. Multiple CaesarLoopers can be synced. Let's create a second instance and set it to not record and not output any dry signal
+
+code::
+b = CaesarLooper(maxDelay:20)
+b.inputLevel_(0)
+b.dryLevel_(0)
+b.masterFeedback_(1)
+::
+
+It will start with the same 2 second delay default as the first one. Now we set the first CaesarLooper to be the master and the second one to be the slave:
+
+code::
+a.syncMode_(\master)
+b.syncMode_(\slave)
+::
+
+Now the delay time of the second looper (b) will change every time we change the delay time of the first one (a)
+
+
+
+
+

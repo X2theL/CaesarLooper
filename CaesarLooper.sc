@@ -64,26 +64,28 @@ CaesarLooper {
 		switch (syncMode)
 		{ \none } {
 			all.do ({ arg i;
-				if ( i.dependants.findMatch(this) ) {
+				if ( i.dependants.findMatch(this).notNil ) {
 					i.removeDependant(this)
 				};
-				if ( this.dependants.findMatch(i) ) {
+				if ( this.dependants.findMatch(i).notNil ) {
 					this.removeDependant(i)
 				}
 			});
 		} { \slave } {
 			all.do ({ arg i;
 				if ( i.syncMode == \master ) {
-					i.addDependant(this)
+					i.addDependant(this);
+					this.pr_setSyncedDelay(i); // set my delay to master's
 				}
 			});
 		} { \master } {
 			all.do ({ arg i;
 				if ( i.syncMode == \master and: i !== this) {
-					i.syncMode_(\none)
+					i.syncMode_(\none) // set previous master to none
 				};
 				if ( i.syncMode == \slave ) {
-					this.addDependant(i)
+					this.addDependant(i);
+					i.pr_setSyncedDelay(this); // adjust delay here
 				};
 			});
 		}
@@ -92,8 +94,21 @@ CaesarLooper {
 	// when I'm a slave I set my delay to the master's
 	update { arg changer, what ...args;
 		switch ( what )
-		{ \delay } { this.delay_(args[0]) }
-		{ \recStop } { this.delay_(args[0]) }
+		{ \recStop } {
+			this.pr_setSyncedDelay(changer);
+		}
+	}
+
+	pr_setSyncedDelay { arg master;
+		var newDelay = (master.delay / master.beats);
+		if ( master.triplet ) {
+			newDelay = newDelay * 1.5;
+		};
+		newDelay = newDelay * beats;
+		if ( triplet ) {
+			newDelay = newDelay * 0.66667;
+		};
+		this.delay_( newDelay )
 	}
 
 	addRead { arg div=0.5, level=0.5, pan=0;
@@ -349,7 +364,7 @@ CaesarLooper {
 	delay_ { arg newVal=1;
 		if (isFrozen) { this.pr_freezeReset };
 		delay = newVal.clip(0.005, maxDelay);
-		this.changed( \delay, delay );
+		this.changed( \delay );
 	}
 
 	// beats can be set with or without changing delay time
@@ -367,7 +382,7 @@ CaesarLooper {
 			triplet = newVal;
 			if ( changeDelay ) {
 				if ( triplet ) {
-					this.delay_( delay * 0.6667 );
+					this.delay_( delay * 0.66667 );
 				} {
 					this.delay_( delay * 1.5 );
 				}
