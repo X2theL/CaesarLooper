@@ -264,7 +264,7 @@ CaesarLooper {
 							}, '/n_end', argTemplate:[writeSynth.nodeID]).oneShot;
 							this.pr_bundledRelease; // end write and reads
 						};
-						delay.wait;
+						(delay * this.getRate.abs.reciprocal).wait;
 					}
 				}
 			}, '/tr', argTemplate:[nil, 34]).oneShot;
@@ -458,7 +458,7 @@ CaesarLooper {
 				var sig = (inputStereo * (1 - monoize)) + (pannedMono * monoize);
 
 				Out.ar( globalOutBus, inputStereo * dryLevel ); // dry signal
-				Out.ar( preAmpBus, (sig * inputLevel * pr_inputLevel) + (feedbackIn * masterFeedback * pr_feedback) );
+				Out.ar( preAmpBus, ( sig * inputLevel * Lag.kr(pr_inputLevel, 0.06) ) + (feedbackIn * masterFeedback * pr_feedback) );
 			}).add;
 
 			// sends notification when rate approaches 0
