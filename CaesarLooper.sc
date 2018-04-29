@@ -414,8 +414,13 @@ CaesarLooper {
 	}
 
 	clear {
-		buf.zero;
-		this.pr_freezeReset;
+		fork {
+			inputSynth.set('pr_feedback', 0.0, 'pr_inputLevel', 0.0);
+			server.sync;
+			buf.zero( {inputSynth.set('pr_feedback', 1.0, 'pr_inputLevel', 1.0)} );
+			server.sync;
+			if ( isFrozen ) { this.pr_freezeReset };
+		}
 	}
 
 	// see FadeState for implementation of state machine
@@ -458,7 +463,7 @@ CaesarLooper {
 				var sig = (inputStereo * (1 - monoize)) + (pannedMono * monoize);
 
 				Out.ar( globalOutBus, inputStereo * dryLevel ); // dry signal
-				Out.ar( preAmpBus, ( sig * inputLevel * Lag.kr(pr_inputLevel, 0.06) ) + (feedbackIn * masterFeedback * pr_feedback) );
+				Out.ar( preAmpBus, ( sig * inputLevel * pr_inputLevel ) + (feedbackIn * masterFeedback * pr_feedback) );
 			}).add;
 
 			// sends notification when rate approaches 0
