@@ -4,495 +4,240 @@ categories:: LiveLooping
 related:: Classes/IBufWr, Tutorials/Loop-Like-An-Emperor
 
 DESCRIPTION::
-CaesarLooper is a tape delay style looper with tons of features. To get to know it, it is highly recommended to work through the Loop-Like-An-Emperor tutorial
+CaesarLooper is a tape delay style looper with tons of features. To get to know it, it is highly recommended to work through the Loop-Like-An-Emperor tutorial.
 
 
 CLASSMETHODS::
 
-METHOD:: syncGroups
-(describe method here)
-
-returns:: (describe returnvalue here)
-
 METHOD:: new
-(describe method here)
+Create a new instance. This allocates a buffer and sets up some synths so don't expect it to be ready immediately.
 
 ARGUMENT:: inputBus
-(describe argument here)
+Expects an audio rate Bus. If nil, the first two system input channels are used.
 
 ARGUMENT:: outputBus
-(describe argument here)
+Expects an audio rate Bus. If nil the first two system output channels are used.
 
 ARGUMENT:: maxDelay
-(describe argument here)
+The size of the buffer and maximum possible loop length in seconds. Default is 30.
 
 ARGUMENT:: server
-(describe argument here)
+If nil the default server is used
 
-returns:: (describe returnvalue here)
-
-METHOD:: initClass
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: phasorGroup
-(describe method here)
-
-returns:: (describe returnvalue here)
+returns:: A new CaesarLooper instance
 
 
 INSTANCEMETHODS::
 
-METHOD:: masterFeedback
-(describe method here)
-
-ARGUMENT:: newVal
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: syncMode
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: writeSynth
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: pitchInertia
-(describe method here)
-
-ARGUMENT:: newVal
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: buf
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: isTapping
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: freeze
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: looperGroup
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: delay
-(describe method here)
-
-ARGUMENT:: newVal
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: playFX
-(describe method here)
-
-ARGUMENT:: fx
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: free
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: reads
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: punchOutQuantize
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: init
-(describe method here)
-
-ARGUMENT:: in
-(describe argument here)
-
-ARGUMENT:: out
-(describe argument here)
-
-ARGUMENT:: smode
-(describe argument here)
-
-ARGUMENT:: sgroup
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: fadeOutCompleteAction
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: beats
-(describe method here)
-
-ARGUMENT:: newVal
-(describe argument here)
-
-ARGUMENT:: changeDelay
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: pr_freezeReset
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: isFrozen
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: syncGroup
-(describe method here)
-
-ARGUMENT:: newGroup
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: fadeOverride
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: tapLength
-(describe method here)
-
-returns:: (describe returnvalue here)
-
 METHOD:: dryLevel
-(describe method here)
+Get or set the level of the dry signal
 
 ARGUMENT:: newVal
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: fxSynth
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: inputLevel
-(describe method here)
-
-ARGUMENT:: newVal
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: punchInQuantize
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: addRead
-(describe method here)
-
-ARGUMENT:: div
-(describe argument here)
-
-ARGUMENT:: level
-(describe argument here)
-
-ARGUMENT:: pan
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: isReversed
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: removeRead
-(describe method here)
-
-ARGUMENT:: index
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: punchInInputLevel
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: digitalMode
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: triggerSynth
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: reverseRout
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: triplet
-(describe method here)
-
-ARGUMENT:: newVal
-(describe argument here)
-
-ARGUMENT:: changeDelay
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: fade
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: isRecording
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: punchOutType
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: initialPan
-(describe method here)
-
-ARGUMENT:: newVal
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: delayInertia
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: fadeOutTime
-(describe method here)
-
-returns:: (describe returnvalue here)
+A float between 0 and 1
 
 METHOD:: effectLevel
-(describe method here)
+Get or set the level of the looper
 
 ARGUMENT:: newVal
-(describe argument here)
+A float between 0 and 1
 
-returns:: (describe returnvalue here)
-
-METHOD:: freezeMode
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: fadeState
-(describe method here)
-
-ARGUMENT:: newState
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: reverse
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: preAmpBus
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: punchOutInputLevel
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: pitch
-(describe method here)
+METHOD:: inputLevel
+Get or set the level of the signal from globalInputBus.
 
 ARGUMENT:: newVal
-(describe argument here)
+A float between 0 and 1
 
-returns:: (describe returnvalue here)
-
-METHOD:: posil
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: triggerLevel
-(describe method here)
+METHOD:: masterFeedback
+Get or set level of the signal that is fed back into the loop. Levels from 0 to 1.3 are allowed. Be extremely careful with levels higher than 1. It will get loud!
 
 ARGUMENT:: newVal
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: fadeSynth
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: server
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: fadeInTime
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: inputSynth
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: tapeStart
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: globalInBus
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: tapeStop
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: phasorBus
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: globalOutBus
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: monoize
-(describe method here)
-
-ARGUMENT:: newVal
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: maxDelay
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: phasorSynth
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: pisil
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: readBus
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: pitchLFOSpeed
-(describe method here)
-
-ARGUMENT:: newVal
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: fadeOSCFunc
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: armAutoRec
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: fadeBus
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: fxBus
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: delayInertiaFadeTime
-(describe method here)
-
-ARGUMENT:: newVal
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: mixSynth
-(describe method here)
-
-returns:: (describe returnvalue here)
+A float between 0 and 1.3
 
 METHOD:: tapRecord
-(describe method here)
+Start and stop recording a loop.
 
-returns:: (describe returnvalue here)
+METHOD:: isRecording
+Tells you if a loop is still being recorded
 
-METHOD:: isTriggering
-(describe method here)
+returns:: boolean
 
-returns:: (describe returnvalue here)
+METHOD:: armAutoRec
+Start a synth that is listening to the globalInputBus and initiates tapRecord if the input level exceeds triggerLevel. Then you only have to call tapRecord once when you've finished recording.
 
-METHOD:: pitchLFODepth
-(describe method here)
+METHOD:: triggerLevel
+Get or set the threshold level used to trigger recording when armAutoRec is engaged.
 
 ARGUMENT:: newVal
-(describe argument here)
+A float between 0.0001 and 1.0
 
-returns:: (describe returnvalue here)
+METHOD:: pisil
+"Punch in set input level" - A boolean indicating if you want to automatically set the inputLevel to punchOutInputLevel when a loop recording is started using tapRecord. Default is true.
+
+METHOD:: punchInInputLevel
+Get or set the value inputLevel will be set to if pisil=true and you start a loop recording using tapRecord. Default is 1.0
+
+METHOD:: posil
+"Punch out set input level" - A boolean indicating if you want to automatically set the inputLevel to punchOutInputLevel when a loop is closed using tapRecord. This way, you can record a loop and immediately start playing over it without overdubbing. Default is true.
+
+METHOD:: punchOutInputLevel
+Get or set the value inputLevel will be set to if posil=true and you close a loop recording using tapRecord. Default is 0.0.
+
+METHOD:: tapLength
+In addition to using tapRecord or delay, the length of the loop can also be "tapped out" by calling this twice.
+
+METHOD:: delay
+Get or set the delay time (loop length)
+
+ARGUMENT:: newVal
+New delay time in seconds
+
+METHOD:: beats
+Get or set the rhythmical representation of the loop length in number of beats
+
+ARGUMENT:: newVal
+Number of beats as an integer (or float if you're crazy enough)
+
+ARGUMENT:: changeDelay
+If false the actual loop length is not changed. This way you can just record something and if you find your loop is e.g., 7 beats long adjust this value. Then you can change the length to be, say, 3 beats by calling this method again, this time with the changeDelay argument set to true. You can do interesting rhythmic stuff with that.
+
+METHOD:: triplet
+	Get or set the rhythmical representation of your loop as a number of straight beats or triplet beats. If, e.g., you have one CaesarLooper set to 1 beat and triplet=true and sync it to a master that is set to its default of 4 beats and triplet=false, then the slave will be one quarter note triplet or 2/3 of a beat long... to put it simply: setting triplet to true (with changeDelay=true) will multiply the delay by 0.666666667.
+
+ARGUMENT:: newVal
+A boolean
+
+ARGUMENT:: changeDelay
+Same behavior as in the beats method: only changes the actual loop length if this is true
+
+METHOD:: tapeStop
+Stop the Phasor driving the buffer read and write synths, and thus "the tape". If you want a tape stop effect you need to adjust pitchInertia first.
+
+METHOD:: tapeStart
+"Restart the tape"
+
+METHOD:: pitchInertia
+Get or set the lag time for the phasor synth's rate argument. If delayInertia is set to true it also makes the read synth(s) "slide" to new positions for an additional tape-like effect.
+
+ARGUMENT:: newVal
+A float between 0 and 5
+
+METHOD:: delayInertia
+Get or set delayInertia, i.e. whether new read synths are created when the delay time changes or whether the old ones move to their new positions. If you set this to true you probably also want to set pitchInertia to > 0.
+
+METHOD:: delayInertiaFadeTime
+Get or set the time it takes for read synths to fade in or out when they are created or released.
+
+ARGUMENT:: newVal
+A float between 0 and 0.3
+
+METHOD:: pitch
+Get or set the pitch of the loop, i.e., adjust the Phasor's rate.
+
+ARGUMENT:: newVal
+An integer between -12 (one octave lower - half speed) and 12 (one octave higher - double speed)
+
+METHOD:: pitchLFODepth
+There's also an LFO that can be used to modulate the rate of the Phasor. It sounds a bit questionable all is fair in love and art. Get or set its depth here.
+
+ARGUMENT:: newVal
+A float between 0 and 3000(!)
+
+METHOD:: pitchLFOSpeed
+Get or set the rate of the LFO
+
+ARGUMENT:: newVal
+A float between 0 and 20
+
+METHOD:: reverse
+Reverse the tape
+
+METHOD:: isReversed
+Check if the tape is reversed
+
+returns:: A boolean
+
+METHOD:: freeze
+	Cut input from globalInBus and feed the read synth back into the write synth and start a routine that reads from and writes to the same part of the buffer over and over again effectively creating a loop that won't change even if you engage the fx synth... in theory. In practice, this is likely to produce little clicks when switching back to normal mode. But if you embrace the glitches it can be put to good use in combination with the fx in the fx synth.
+
+METHOD:: isFrozen
+Check if the loop is frozen
+
+returns:: A boolean
+
+METHOD:: fade
+Fade the loop out or in
+
+METHOD:: fadeOverride
+If a fade is running this makes the volume jump to the destination volume (0 or 1) immediately
+
+METHOD:: fadeInTime
+Get or set the time a fade in takes in seconds.
+
+METHOD:: fadeOutTime
+Get or set the time a fade out takes in seconds.
+
+METHOD:: fadeOutCompleteAction
+Three different behaviors are available: \none, which is the default, does nothing when the loop level reaches 0. \clear clears the loop and \clear2 clears the loop and sets the level back to 1.
+
+
+METHOD:: monoize
+Get or set the degree to which the input stereo signal is mixed to mono. Use this in combination with initialPan to send a panned signal to the buffer.
+
+ARGUMENT:: newVal
+A float between 0 (stereo) and 1 (mono)
+
+METHOD:: initialPan
+Get or set the pan position of a monoized input signal.
+
+ARGUMENT:: newVal
+A float between -1 and 1.
+
+METHOD:: syncMode
+Get or set the mode in which the instance is operating in. If more than one instances are running, the sync mode affects the relationship of their respective delay times. If set to \none an instance is completely independent from any of the others. If one is set to \master then all other instances adjust their delay time to it the moment their sync mode is set to \slave and after that every time a tap recording of the master is performed.
+
+ARGUMENT:: newMode
+\none, \master or \slave. Default is \none.
+
+METHOD:: globalInBus
+Get or set the input bus for the looper
+
+ARGUMENT:: newBus
+A Bus
+
+METHOD:: globalOutBus
+Get or set the output bus for the looper
+
+ARGUMENT:: newBus
+A Bus
+
+METHOD:: addRead
+Add a new read synth to the looper which allows you to create "nested loops" for effects ranging from traditional tap delays to utter mayhem.
+
+ARGUMENT:: div
+A value between 0.001 and 1. 0.5 would create the read synth with exactly half the delay time.
+
+ARGUMENT:: level
+A float between 0 and 1 that sets the output level.
+
+ARGUMENT:: pan
+A float between -1 and 1 that sets the pan position.
+
+METHOD:: removeRead
+Remove a read synth.
+
+ARGUMENT:: index
+The index of the read synth to be removed. If this is nil, it removes the last one that was added.
+
+METHOD:: reads
+Returns the read synth objects as a list so you can access them to ajust their divisor, level or pan values.
+
+returns:: A List
 
 METHOD:: clear
-(describe method here)
+Zeroes the buffer
 
-returns:: (describe returnvalue here)
-
+METHOD:: free
+	Frees the buffer and the synths (with the exception of the global phasorGroup) and
 
 EXAMPLES::
 

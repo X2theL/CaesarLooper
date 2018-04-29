@@ -1,6 +1,5 @@
 // a reverse engineered version of the awesome vst plugin by Expert Sleepers
 // TODO:
-// - adjust delay length when changing pitch (fix delay option)
 // - make hot-swappable fx
 // - preset system
 CaesarLooper {
@@ -9,7 +8,7 @@ CaesarLooper {
 	var <maxDelay, <server, <syncMode=\none, <beats=4, <triplet=false;
 	var <buf, <looperGroup, <phasorBus, <globalInBus, <preAmpBus, <readBus, <fxBus, <globalOutBus, <fadeBus;
 	var <phasorSynth, <inputSynth, <reads, <writeSynth, <fxSynth, <mixSynth, <triggerSynth,  triggerOSCFunc;
-	var timeAtRecStart, <isRecording=false, timeAtTapStart, locked=false, phasePos, <isTapping=false, <isTriggering=false, <triggerLevel;
+	var timeAtRecStart, <isRecording=false, timeAtTapStart, locked=false, phasePos, <isTapping=false, <isTriggering=false, <triggerLevel=0.4;
 	var <pitchInertia=0.0, <delayInertiaFadeTime=0.05, <>delayInertia=false;
 	var <isFrozen=false, <isReversed=false, <freezeRout, <monoize=0.0, <initialPan=0.0;
 	var <delay=2.0, <masterFeedback=0.5, <dryLevel=1.0, <effectLevel=0.8, <inputLevel=1.0;
@@ -106,13 +105,13 @@ CaesarLooper {
 		};
 		newDelay = newDelay * beats;
 		if ( triplet ) {
-			newDelay = newDelay * 0.66667;
+			newDelay = newDelay * 0.666666667;
 		};
 		this.delay_( newDelay )
 	}
 
 	addRead { arg div=0.5, level=0.5, pan=0;
-		reads.add( CaesarRead(this, div, level, pan) );
+		reads.add( CaesarRead(this, div.clip(0.001, 1), level, pan) );
 	}
 
 	removeRead { arg index;
@@ -227,13 +226,17 @@ CaesarLooper {
 	// create a one shot trigger synth and OSCFunc that activates tapRec
 	armAutoRec {
 		if ( isTriggering.not ) {
-			triggerSynth = Synth('caesartrigger', [], inputSynth, 'addAfter');
+			triggerSynth = Synth('caesartrigger', ['thresh', triggerLevel], inputSynth, 'addAfter');
 			triggerOSCFunc = OSCFunc({arg msg;
 				"recording started".postln;
 				if ( isRecording.not ) { this.tapRecord };
 				isTriggering = false;
 			}, '/tr', server.addr, nil, [triggerSynth.nodeID]).oneShot;
 			isTriggering = true;
+		} {
+			triggerOSCFunc.free;
+			triggerSynth.free;
+			isTriggering = false;
 		}
 	}
 
@@ -244,7 +247,6 @@ CaesarLooper {
 		}
 	}
 
-	// implements freezeMode \last from Augustus Loop
 	freeze {
 		if (locked or:{ isRecording }) {"locked".postln; ^nil};
 		if ( isFrozen ) {
