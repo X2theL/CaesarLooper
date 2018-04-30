@@ -42,7 +42,8 @@ CaesarLooper {
 
 			phasorSynth = Synth('caesarphasor', ['buf', buf, 'phasorBus', phasorBus, 'pitchInertia', pitchInertia], phasorGroup);
 
-			inputSynth = Synth('caesarinput', ['inBus', globalInBus, 'preAmpBus', preAmpBus, 'globalOutBus', globalOutBus, 'feedbackBus', fxBus, 'masterFeedback', masterFeedback], looperGroup);
+			inputSynth = Synth('caesarinput', ['inBus', globalInBus, 'preAmpBus', preAmpBus, 'globalOutBus', globalOutBus,
+				'feedbackBus', fxBus, 'readBus', readBus, 'masterFeedback', masterFeedback], looperGroup);
 
 			fxSynth = Synth('caesarfx', ['readBus', readBus, 'fxBus', fxBus], inputSynth, 'addAfter');
 
@@ -253,7 +254,7 @@ CaesarLooper {
 			this.pr_freezeReset;
 		} {
 			// cut input, switch inputSynth feedbackBus from fxBus to readBus
-			inputSynth.set('feedbackBus', readBus, 'pr_inputLevel', 0);
+			inputSynth.set('freezeOn', 1, 'pr_inputLevel', 0);
 			OSCFunc({arg msg;
 				// Routine
 				freezeRout = fork {
@@ -279,7 +280,7 @@ CaesarLooper {
 
 	pr_freezeReset {
 		freezeRout.stop;
-		inputSynth.set('feedbackBus', fxBus, 'pr_inputLevel', 1);
+		inputSynth.set('freezeOn', 0, 'pr_inputLevel', 1);
 		isFrozen = false;
 	}
 
@@ -456,9 +457,10 @@ CaesarLooper {
 
 		ServerBoot.add({
 			// synth for initial panning, stereoization and feedback mixing
-			SynthDef('caesarinput', {arg inBus=0, preAmpBus=0, globalOutBus=0, feedbackBus=88, inputLevel=1.0, pr_inputLevel=1.0, dryLevel=1.0, masterFeedback=0.8, pr_feedback=1.0, monoize=0.0, initialPan=0.0;
+			SynthDef('caesarinput', {arg inBus=0, preAmpBus=0, globalOutBus=0, feedbackBus, readBus, freezeOn=0, inputLevel=1.0,
+				pr_inputLevel=1.0, dryLevel=1.0, masterFeedback=0.8, pr_feedback=1.0, monoize=0.0, initialPan=0.0;
 
-				var feedbackIn = InFeedback.ar(feedbackBus, 2); // feedback output from fxBus
+				var feedbackIn = SelectX.ar(Lag.kr(freezeOn, 0.05), [InFeedback.ar(feedbackBus, 2), InFeedback.ar(readBus, 2)]);
 				var inputStereo = In.ar(inBus, 2);
 				var inputMono = Mix(inputStereo);
 				var pannedMono = Pan2.ar(inputMono, initialPan);
