@@ -1,10 +1,13 @@
 title:: Loop like an emperor
 summary:: A CaesarLooper tutorial
 categories:: Tutorials LiveLooping
+related:: LiveLooping/CaesarLooper
 
 This is a practical introduction to CaesarLooper. Read the class reference for details on its methods.
 
 link::Classes/CaesarLooper::
+
+For more info on the technicalities, read LINK::Guides/CaesarLooper-Concepts::
 
 Section::Introduction
 

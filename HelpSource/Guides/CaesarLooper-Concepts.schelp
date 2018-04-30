@@ -1,0 +1,53 @@
+title:: The inner workings of CaesarLooper
+summary:: The concepts in CaesarLooper explained
+categories:: Guides LiveLooping
+related:: Classes/CaesarLooper, Tutorials/Loop-Like-An-Emperor
+
+
+Please refer back to link::Classes/CaesarLooper:: and the source for details about specific methods.
+
+Section::Disclaimer
+
+I'm a self-taught dilletante coder who has picked up a thing or two along the way. I've tried to document CaesarLooper as well as I could in the hope that maybe someone more experienced might get interested in improving CaesarLooper, so I could learn something in the process.
+
+Section::The main idea
+
+CaesarLooper looper is an attempt at a clone of the excellent VST plugin Augustus Loop by Expert Sleepers. It has most of the features of the original although some of them don't work as smoothly (freeze!).
+
+The main concept is that of a "digitally enhanced" tape delay. CaesarLooper uses one single big buffer and a phasor that drives one write synth and one or more read synths. The position of the read synth is offset by a number of samples calculated from the delay time. The signal it outputs is mixed with the input signal and fed back to the write synth. This little ensemble constantly loops through the buffer unless special functions like tapRecord or freeze are being used.
+
+Here's an attempt at a flow chart:
+
+image::CaesarLooper—flowchart.png::
+
+Section:: IBufWr
+
+When I started working on CaesarLooper, I soon noticed that because BufWr has no interpolation, it sounded quite terrible as soon as I started playing with the phasor rate to create pitch changes and other tape-like effects. I was very disappointed because it seemed like this concept was just inpossible to implement in SC. About a week later, Pierre Alexandre Tremblay released IBufWr which does exactly what I needed, i.e. interpolating while writing into a buffer while being driven by a Phasor. Perfect timing!
+
+If for some reason you don't want to or can't install IBufWr, all you need to do is search for it in the source and remove the 'I'. Everthing will work just the same except that any pitch changes tape stops etc will sound just aweful.
+
+Section::Synchronization
+
+CaesarLooper doesn't have any form of external synchronization because I couldn't find a way of reconciling SuperCollider's client/server architecture where scheduling is done mostly on the client side with the way looping happens in CaesarLooper which (with the exception of the freeze function) happens without any need for scheduling entirely on the server.
+
+For this reason, CaesarLooper also doesn't have the punch in/out synchronization features that Augustus Loop has.
+
+Section::Things left to do
+
+I haven't found a way yet to prevent the clear function which zeros the buffer to create a click every now and then. I'm sure there's a solution for that and I might go and have a look at it sometime.
+
+The loop effect is implemented a bit clumpsily. There is only one fx synth and it's always running. I will improve on that.
+
+With so many parameters and so many different ways of using CaesarLooper, a preset system would be nice.
+
+I'm sure there are still bugs hiding in the source. If you find one, let me know. Or even better, fix it yourself and send me a patch :-)
+
+Section::What I will not implement
+
+Augustus Loop has 16! so-called loop groups, each of which can have a master and any number of loops slaved to it plus any number of unsynced loops. I just couldn't imagine any situation where anyone would ever need more.
+
+Section::Special thanks
+
+Many thanks to Os from Expert Sleepers for making Augustus Loop, writing excellent documentation for it and allowing me to release my clone as a Quark.
+
+Thanks a lot to Pierre Alexandre Tremblay for making IBufWr and to the SC community for giving help and advice so generously.

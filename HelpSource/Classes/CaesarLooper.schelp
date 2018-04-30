@@ -1,13 +1,15 @@
 TITLE:: CaesarLooper
 summary:: A clone of the amazing tape delay/looper VST Augustus Loop by ExpertSleepers
 categories:: LiveLooping
-related:: Classes/IBufWr, Tutorials/Loop-Like-An-Emperor
+related:: Classes/IBufWr, Tutorials/Loop-Like-An-Emperor, Guides/CaesarLooper-Concepts
 
 DESCRIPTION::
-CaesarLooper is a tape delay style looper with tons of features. To get to know it, it is highly recommended to work through the Loop-Like-An-Emperor tutorial.
+CaesarLooper is a tape delay style looper with tons of features. To get to know it, it is highly recommended to work through the LINK::Tutorials/Loop-Like-An-Emperor:: tutorial.
 
 
 CLASSMETHODS::
+
+PRIVATE::all, phasorGroup
 
 METHOD:: new
 Create a new instance. This allocates a buffer and sets up some synths so don't expect it to be ready immediately.
@@ -28,6 +30,8 @@ returns:: A new CaesarLooper instance
 
 
 INSTANCEMETHODS::
+
+PRIVATE::buf, fadeBus, fadeOSCFunc, fadeState, fadeSynth, freezeRout, fxBus, fxSynth, getRate, inputSynth, looperGroup, maxDelay, mixSynth, phasorBus, phasorSynth, pr_bundledMake, pr_bundledRelease, pr_calcPhasePos, pr_freezeReset, pr_setSyncedDelay, preAmpBus, readBus, triggerSynth, update, writeSynth
 
 METHOD:: dryLevel
 Get or set the level of the dry signal
