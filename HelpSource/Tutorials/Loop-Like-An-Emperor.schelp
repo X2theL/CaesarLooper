@@ -1,7 +1,7 @@
 title:: Loop like an emperor
 summary:: A CaesarLooper tutorial
 categories:: Tutorials LiveLooping
-related:: LiveLooping/CaesarLooper
+related:: Classes/CaesarLooper, Guides/CaesarLooper-Concepts
 
 This is a practical introduction to CaesarLooper. Read the class reference for details on its methods.
 
@@ -23,13 +23,13 @@ In order to use CaesarLooper, you need to have IBufWr by Pierre Alexandre Trembl
 
 https://github.com/tremblap/IBufWr
 
-You also will need a sound source to feed it. CaesarLooper runs in stereo, because I was too lazy to build a mono option as well. Throughout the tutorial, I will be using the first two inputs from my audio interface which is the default.
+You also will need a stereo sound source to feed it. Throughout the tutorial, I will be using the first two inputs from my audio interface which is the default.
 
-To really have fun with a looper - especially if you play an intrument that occupies both of your hands - you will want to map a couple of your favorite functions to a midi foot switch. There are other tutorials that cover this so I won't bother with it here. I'll just use a Mic plugged into a mixer that feeds the first two channels of my audio interface.
+To really have fun with a looper - especially if you play an intrument that occupies both of your hands - you will want to map a couple of your favorite functions to a midi controller. There are other tutorials that cover this so I won't bother with it here. I'll just use a Mic plugged into a mixer that feeds the first two channels of my audio interface.
 
-strong::Attention!:: CaesarLooper is based on feedback loops. It's in the nature of feedback loops to sometimes get out of control and become REALLY LOUD. To reduce the risk of ear damage, choose a low enough basic volume, be especially careful when playing with the filter functions, create longer loops (so you can hear the danger coming) and always know where your volume knob is.
+strong::Attention!:: CaesarLooper is based on feedback loops. It's in the nature of feedback loops to sometimes get out of control and become REALLY LOUD. In CaesarLooper, this can (and will) happen when you start with the built in fx synth. To reduce the risk of ear damage, choose a low enough basic volume, be especially careful when playing with the filter q and overdrive, make use of the freeze function, create longer loops (so you can hear the danger coming) and always know where your master volume knob is.
 
-Having said that, have fun! Let's go!
+Having said all that, let's have some fun!
 
 Section::Basics
 
@@ -94,13 +94,19 @@ code::
 a.armAutoRec
 ::
 
-and whenever you feel ready start making noise. Try beatboxing for a nice clean onset to trigger recording. CaesarLooper will notify you in the post window when it has started recording. You will have to close the loop manually though by sending
+and whenever you feel ready start making noise. Try beatboxing for a nice clean onset to trigger recording. CaesarLooper will notify you in the post window when it has started recording. If it doesn't start recording try lowering the trigger threshold:
+
+code::
+a.triggerLevel_(0.01)
+::
+
+Once CaesarLooper has started recording you will have to close the loop manually by sending
 
 code::
 a.tapRecord
 ::
 
-There is also a way to change the delay time by sending tapLenth twice. Let's use it to shorten our loop while it's running. Execute this twice within about a second
+There is also a way to change the delay time by sending tapLenth twice. Let's use it to shorten our loop while it's running. Execute this twice within about one second
 
 code::
 a.tapLength;
@@ -178,7 +184,7 @@ code::
 a.tapeStop;
 ::
 
-This is a good opportunity to explain a few concepts: internally, pitchInertia is a Lag.kr on the rate of the Phasor synth, so it affects all functions that change that rate. These functions are pitch, reverse, tapeStop and tapeStart. But pitchInertia also controls the lag of the read synth's phase. That means that it can be used to create the effect of tape read heads sliding into new positions when changing the delay time. Let's try this out. Start the tape again:
+This is a good opportunity to explain a few concepts: internally, pitchInertia is a Lag on the rate of the Phasor synth, so it affects all functions that change that rate. These functions are pitch, reverse, tapeStop and tapeStart. But pitchInertia also controls the lag of the read synth's phase. That means that it can be used to create the effect of tape read heads sliding into new positions when changing the delay time. Let's try this out. Start the tape again:
 
 code::
 a.tapeStart;
@@ -304,7 +310,7 @@ a.inputLevel_(1)
 a.inputLevel_(0)
 ::
 
-You'll notice that the loop is now actually 6 beats long again. The same size we started at. But now it consists of two repetitions of the same 3 beats of audio (plus our overdub) The triplet method changes the loop length 2/3 the original size:
+You'll notice that the loop is now actually 6 beats long again. The same size we started at. But now it consists of two repetitions of the same 3 beats of audio (plus our overdub) The triplet method changes the loop length to two thirds of its original size:
 
 code::
 a.triplet_(true, true)
@@ -365,14 +371,22 @@ b.dryLevel_(0)
 b.masterFeedback_(1)
 ::
 
-It will start with the same 2 second delay default as the first one. Now we set the first CaesarLooper to be the master and the second one to be the slave:
+It will start with the same 2 second delay default as the first one. Set the first CaesarLooper to be the master and the second one to be the slave:
 
 code::
 a.syncMode_(\master)
 b.syncMode_(\slave)
 ::
 
-Now the delay time of the second looper (b) will change every time we change the delay time of the first one (a)
+Now the delay time of looper b should correspond to looper a's delay time in a musical way described by both loopers' beats and triplet variables. E.g., if a is 4.5 seconds long and its beats variable is set to 3, then b should now be 6 seconds long since one beat in a is 1.5 seconds long and b's beats variable is set to 4 as per default.
+
+Changing a's delay time or beats or triplet value later will not affect b's delay time. The syncing only happens when you change the syncMode and then every time you close a loop using tapRecording.
+
+This means you can setup slaved loops to always their length in a specific rhythmic relationship with the master loop no matter how often you create new loops in new tempos.
+
+I guess, one could explore the possibilities this creates for several years.
+
+How about you this, and when you come back, I might add a section on creating nested loops with the addRead method.
 
 
 

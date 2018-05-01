@@ -141,7 +141,7 @@ ARGUMENT:: newVal
 An integer between -12 (one octave lower - half speed) and 12 (one octave higher - double speed)
 
 METHOD:: pitchLFODepth
-There's also an LFO that can be used to modulate the rate of the Phasor. It sounds a bit questionable all is fair in love and art. Get or set its depth here.
+Get or set the depth of the LFO that modulates the rate of the Phasor. It sounds a bit questionable but all is fair in love and art.
 
 ARGUMENT:: newVal
 A float between 0 and 3000(!)
@@ -246,5 +246,16 @@ METHOD:: free
 EXAMPLES::
 
 code::
-(some example code)
+s.boot
+// new instance
+a = CaesarLooper.new
+// set feedback
+a.masterFeedback_(1)
+// record a loop by executing this twice:
+a.tapRecord
+// overdub
+a.inputLevel_(1)
+// clean up
+a.free
+// Please see the tutorial for more examples
 ::
