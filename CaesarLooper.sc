@@ -10,7 +10,7 @@ CaesarLooper {
 	var <phasorSynth, <inputSynth, <reads, <writeSynth, <fxSynth, <mixSynth, <triggerSynth,  triggerOSCFunc;
 	var timeAtRecStart, <isRecording=false, timeAtTapStart, locked=false, phasePos, <isTapping=false, <isTriggering=false, <triggerLevel=0.4;
 	var <pitchInertia=0.0, <delayInertiaFadeTime=0.05, <>delayInertia=false;
-	var <isFrozen=false, <isReversed=false, <freezeRout, <monoize=0.0, <initialPan=0.0;
+	var <isFrozen=false, <isReversed=false, <isMuted=false, <freezeRout, <monoize=0.0, <initialPan=0.0;
 	var <delay=2.0, <masterFeedback=0.5, <dryLevel=1.0, <effectLevel=0.8, <inputLevel=1.0;
 	var <>fadeInTime=3.0, <>fadeOutTime=3.0, <>fadeOutCompleteAction=\none, <fadeState, <>fadeSynth, <>fadeOSCFunc;
 	var <>punchInInputLevel=1.0, <>punchOutInputLevel=0.0, <>pisil=true, <>posil=true;
@@ -163,6 +163,16 @@ CaesarLooper {
 	effectLevel_ { arg newVal;
 		effectLevel = newVal.clip(0, 2);
 		mixSynth.set('effectLevel', effectLevel);
+	}
+
+	mute {
+		if (isMuted) {
+			mixSynth.set('effectLevel', effectLevel);
+		} {
+			mixSynth.set('effectLevel', 0.0);
+		};
+		isMuted = isMuted.not;
+		this.changed(\isMuted, isMuted);
 	}
 
 	// lo: 0, hi: 5
