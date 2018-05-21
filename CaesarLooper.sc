@@ -423,7 +423,8 @@ CaesarLooper {
 			timeAtRecStart = thisThread.seconds;
 			if ( pisil ) { this.inputLevel_( punchInInputLevel ) };
 			isRecording = true;
-		}
+		};
+		this.changed(\isRecording, isRecording);
 	}
 
 	clear {
@@ -433,6 +434,7 @@ CaesarLooper {
 			buf.zero( {inputSynth.set('pr_feedback', 1.0, 'pr_inputLevel', 1.0)} );
 			server.sync;
 			if ( isFrozen ) { this.pr_freezeReset };
+			this.changed(\clear);
 		}
 	}
 
