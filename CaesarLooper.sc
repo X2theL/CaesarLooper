@@ -427,11 +427,14 @@ CaesarLooper {
 		this.changed(\isRecording, isRecording);
 	}
 
+	// uses stopPhase=-1 in the write synth now
 	clear {
 		fork {
-			inputSynth.set('pr_feedback', 0.0, 'pr_inputLevel', 0.0);
+			writeSynth.set('stopPhase', -1);
 			server.sync;
-			buf.zero( {inputSynth.set('pr_feedback', 1.0, 'pr_inputLevel', 1.0)} );
+			buf.zero;
+			server.sync;
+			writeSynth.set('stopPhase', 1);
 			server.sync;
 			if ( isFrozen ) { this.pr_freezeReset };
 			this.changed(\clear);
@@ -495,11 +498,11 @@ CaesarLooper {
 				Out.ar(phasorBus, phase);
 			}).add;
 
-			SynthDef('caesarwrite', {arg buf, preAmpBus, phasorBus, gate=1, fadeIn=0.05, fadeOut=0.05;
+			SynthDef('caesarwrite', {arg buf, preAmpBus, phasorBus, gate=1, fadeIn=0.05, fadeOut=0.05, stopPhase=1;
 				var input = In.ar(preAmpBus, 2);
 				var phase = Wrap.ar( In.ar(phasorBus, 1), 0, BufFrames.kr(buf) );
 				var env = EnvGen.kr(Env.asr(fadeIn, 1, fadeOut), gate, doneAction:2);
-				IBufWr.ar(input * env, buf, phase, 1);
+				IBufWr.ar(input * env, buf, phase * stopPhase, 1);
 			}).add;
 
 			// TODO: make swappable, put before caesarmix
