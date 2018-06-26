@@ -47,7 +47,8 @@ CaesarLooper {
 
 			fxSynth = Synth('caesarfx', ['readBus', readBus, 'fxBus', fxBus], inputSynth, 'addAfter');
 
-			mixSynth = Synth('caesarmix', ['fxBus', fxBus, 'globalOutBus', globalOutBus, 'effectLevel', effectLevel], fxSynth, 'addAfter');
+			mixSynth = Synth('caesarmix', ['fxBus', fxBus, 'globalOutBus', globalOutBus, 'fadeBus', fadeBus, 'effectLevel', effectLevel],
+				fxSynth, 'addAfter');
 
 			writeSynth = Synth('caesarwrite', ['buf', buf, 'preAmpBus', preAmpBus, 'phasorBus', phasorBus], looperGroup, 'addToTail');
 
@@ -569,7 +570,7 @@ FadeDefault : FadeState {
 	// start fade out
 	fade { arg caesar;
 		caesar.fadeSynth = Synth('caesarfadeout', ['fadeBus', caesar.fadeBus,
-			'fadeInTime', caesar.fadeInTime, 'fadeOutTime', caesar.fadeOutTime, 'gate', 1]);
+			'fadeInTime', caesar.fadeInTime, 'fadeOutTime', caesar.fadeOutTime, 'gate', 1], caesar.looperGroup);
 		caesar.fadeOSCFunc = OSCFunc({ arg msg;
 			//msg.postln;
 			if ( msg[3] == 0 ) {
@@ -623,7 +624,7 @@ FadeOutCompleted : FadeState {
 
 	fade { arg caesar;
 		caesar.fadeSynth = Synth('caesarfadein', ['fadeBus', caesar.fadeBus,
-			'fadeInTime', caesar.fadeInTime, 'fadeOutTime', caesar.fadeOutTime, 'gate', 1]);
+			'fadeInTime', caesar.fadeInTime, 'fadeOutTime', caesar.fadeOutTime, 'gate', 1], caesar.looperGroup);
 		caesar.fadeOSCFunc = OSCFunc({ arg msg;
 			// msg.postln;
 			if ( msg[3] == 0 ) {
