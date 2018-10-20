@@ -5,7 +5,7 @@
 CaesarLooper {
 	classvar <all, <phasorGroup;
 
-	var <maxDelay, <server, <syncMode=\none, <beats=4, <triplet=false;
+	var <maxDelay, <target, <server, <syncMode=\none, <beats=4, <triplet=false;
 	var <buf, <looperGroup, <phasorBus, <globalInBus, <preAmpBus, <readBus, <fxBus, <globalOutBus, <fadeBus;
 	var <phasorSynth, <inputSynth, <reads, <writeSynth, <fxSynth, <mixSynth, <triggerSynth,  triggerOSCFunc;
 	var timeAtRecStart, <isRecording=false, timeAtTapStart, locked=false, phasePos, <isTapping=false, <isTriggering=false, <triggerLevel=0.4;
@@ -16,20 +16,25 @@ CaesarLooper {
 	var <>punchInInputLevel=1.0, <>punchOutInputLevel=0.0, <>pisil=true, <>posil=true;
 	var <pitch=0.0, <pitchLFOSpeed=0.0, <pitchLFODepth=0.0;
 
-	*new { arg inputBus, outputBus, maxDelay=30, server;
-		^super.newCopyArgs ( maxDelay, server ).init( inputBus, outputBus );
+	*new { arg inputBus, outputBus, maxDelay=30, target;
+		^super.newCopyArgs ( maxDelay, target ).init( inputBus, outputBus );
 	}
 
 	init { arg in, out, smode, sgroup;
 		all.add(this);
-		server ?? {server = Server.default};
+		if (target.isNil) {
+			server = Server.default;
+			target = server;
+		} {
+			server = target.server;
+		};
 		reads = List.new;
 		fork {
 			buf = Buffer.alloc(server, server.sampleRate * maxDelay, 2);
 			if (phasorGroup.isNil) {
 				phasorGroup = Group.new(server, 'addToHead'); // global phasor group
 			};
-			looperGroup = Group.new(server, 'addToTail'); // always at the bottom
+			looperGroup = Group.new(target, 'addToTail'); // always at the bottom
 			phasorBus = Bus.audio(server, 2);
 			globalInBus = in ?? { Bus.new('audio', server.options.numOutputBusChannels, 2, server) }; // default: hardware in 0,1
 			globalOutBus = out ?? { Bus.new('audio', 0, 2, server) }; // default: hardware out 0,1
@@ -152,6 +157,7 @@ CaesarLooper {
 	inputLevel_ { arg newVal;
 		inputLevel = newVal.clip(0, 2);
 		inputSynth.set('inputLevel', inputLevel);
+		this.changed(\inputLevel, inputLevel);
 	}
 
 	// lo: 0, hi: 2
@@ -407,8 +413,8 @@ CaesarLooper {
 	// can't call delay setter here because CaesarRead's update gets confused
 	tapRecord {
 		var newDelay;
-		if (locked) {"locked".postln; ^nil};
-		if (isTapping) {isTapping = false}; // aborts tapLength
+		if ( locked ) { "locked".postln; ^nil };
+		if ( isTapping ) { isTapping = false }; // aborts tapLength
 		if ( isRecording ) {
 			newDelay = (thisThread.seconds - timeAtRecStart).clip(0.005, maxDelay);
 			delay = newDelay;
