@@ -509,7 +509,7 @@ CaesarLooper {
 				var input = In.ar(preAmpBus, 2);
 				var phase = Wrap.ar( In.ar(phasorBus, 1), 0, BufFrames.kr(buf) );
 				var env = EnvGen.kr(Env.asr(fadeIn, 1, fadeOut), gate, doneAction:2);
-				IBufWr.ar(input * env, buf, phase * stopPhase, 1);
+				BufWr.ar(input * env, buf, phase * stopPhase, 1);
 			}).add;
 
 			// TODO: make swappable, put before caesarmix
