@@ -151,6 +151,7 @@ CaesarLooper {
 	masterFeedback_ { arg newVal;
 		masterFeedback = newVal.clip(0, 1.3);
 		inputSynth.set('masterFeedback', masterFeedback);
+		this.changed(\masterFeedback, masterFeedback);
 	}
 
 	// lo: 0, hi: 2
@@ -488,7 +489,7 @@ CaesarLooper {
 				var pannedMono = Pan2.ar(inputMono, initialPan);
 				var sig = (inputStereo * (1 - monoize)) + (pannedMono * monoize);
 
-				Out.ar( globalOutBus, inputStereo * dryLevel ); // dry signal
+				Out.ar( globalOutBus, sig * dryLevel ); // dry signal
 				Out.ar( preAmpBus, ( sig * inputLevel * pr_inputLevel ) + (feedbackIn * masterFeedback * pr_feedback) );
 			}).add;
 
