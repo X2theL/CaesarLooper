@@ -388,6 +388,11 @@ CaesarLooper {
 		this.changed( \delay );
 	}
 
+	// return current tempo
+	tempo {
+		^( delay / beats ).reciprocal;
+	}
+
 	// beats can be set with or without changing delay time
 	beats_ {arg newVal=1, changeDelay=false;
 		var oldBeats = beats;
