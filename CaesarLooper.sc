@@ -7,7 +7,7 @@ CaesarLooper {
 
 	var <maxDelay, <target, <server, <syncMode=\none, <beats=4, <triplet=false;
 	var <buf, <looperGroup, <phasorBus, <globalInBus, <preAmpBus, <readBus, <fxBus, <globalOutBus, <fadeBus;
-	var <phasorSynth, <inputSynth, <reads, <writeSynth, <fxSynth, <mixSynth, <triggerSynth,  triggerOSCFunc;
+	var <phasorSynth, <inputSynth, <reads, <writeSynth, <passthroughSynth, <fxSynth, <mixSynth, <triggerSynth,  triggerOSCFunc;
 	var timeAtRecStart, <isRecording=false, timeAtTapStart, locked=false, phasePos, <isTapping=false, <isTriggering=false, <triggerLevel=0.4;
 	var <pitchInertia=0.0, <delayInertiaFadeTime=0.05, <>delayInertia=false;
 	var <isFrozen=false, <isReversed=false, <isMuted=false, <freezeRout, <monoize=0.0, <initialPan=0.0;
@@ -50,10 +50,10 @@ CaesarLooper {
 			inputSynth = Synth('caesarinput', ['inBus', globalInBus, 'preAmpBus', preAmpBus, 'globalOutBus', globalOutBus,
 				'feedbackBus', fxBus, 'readBus', readBus, 'masterFeedback', masterFeedback], looperGroup);
 
-			fxSynth = Synth('caesarfx', ['readBus', readBus, 'fxBus', fxBus], inputSynth, 'addAfter');
+			passthroughSynth = Synth('caesarpassthrough', ['in', readBus, 'out', fxBus], inputSynth, 'addAfter');
 
 			mixSynth = Synth('caesarmix', ['fxBus', fxBus, 'globalOutBus', globalOutBus, 'fadeBus', fadeBus, 'effectLevel', effectLevel],
-				fxSynth, 'addAfter');
+				passthroughSynth, 'addAfter');
 
 			writeSynth = Synth('caesarwrite', ['buf', buf, 'preAmpBus', preAmpBus, 'phasorBus', phasorBus], looperGroup, 'addToTail');
 
@@ -129,9 +129,18 @@ CaesarLooper {
 		}
 	}
 
-	// swaps the default post read fx for the provided one
+	// adds feedback fx synths
+	// There can only be one fx synth
+	// if there is already an fx synth
+	// it gets swapped for the new one
 	playFX { arg fx;
-
+		if ( fxSynth.isPlaying ) {
+			fxSynth.release;
+		};
+		if ( fx.notNil ) {
+			fxSynth = Synth( fx, [ 'in', fxBus, 'out', fxBus, 'wet', 0, 'tempo', this.tempo ], passthroughSynth, 'addAfter' );
+			fxSynth.register
+		}
 	}
 
 	// set global out bus
@@ -518,15 +527,15 @@ CaesarLooper {
 				IBufWr.ar(input * env, buf, phase * stopPhase, 1);
 			}).add;
 
-			// TODO: make swappable, put before caesarmix
-			SynthDef('caesarfxdummy', {arg readBus, fxBus, amp=1.0;
-				var input = In.ar(readBus, 2);
-				Out.ar(fxBus, input * amp);
+			// Just patches audio through
+			SynthDef('caesarpassthrough', {arg in=0, out=0, amp=1.0;
+				var input = In.ar(in, 2);
+				Out.ar(out, input * amp);
 			}).add;
 
-			SynthDef('caesarfx', { arg readBus, fxBus, preGain=1, postGain=1, hiDamp=0, loDamp=0, freq=440, q = 1, wet=0, type=0;
+			SynthDef('caesarfx', { arg in=0, out=0, wet=0, preGain=1, postGain=1, hiDamp=0, loDamp=0, freq=440, q = 1, type=0;
 				var dry, fx;
-				dry = In.ar(readBus, 2);
+				dry = In.ar(in, 2);
 				fx = (dry * preGain).softclip * postGain;
 				fx = BHiShelf.ar(fx, 7000, 1, hiDamp);
 				fx = BLowShelf.ar(fx, 300, 1, loDamp);
@@ -536,7 +545,7 @@ CaesarLooper {
 					RHPF.ar(fx, freq, q)
 				]);
 				fx = XFade2.ar(dry, fx, wet * 2 - 1);
-				Out.ar(fxBus, fx);
+				Out.ar(out, fx);
 			}).add;
 
 			SynthDef('caesarmix', {arg fxBus, globalOutBus=0, fadeBus, effectLevel=0.8, gate=1;
