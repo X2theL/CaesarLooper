@@ -163,6 +163,14 @@ CaesarLooper {
 		this.changed(\masterFeedback, masterFeedback);
 	}
 
+	replace { arg repl=true;
+		if ( repl ) {
+			inputSynth.set('pr_feedback', 0, 'inputLevel', 1);
+		} {
+			inputSynth.set('pr_feedback', 1, 'inputLevel', 0);
+		}
+	}
+
 	// lo: 0, hi: 2
 	inputLevel_ { arg newVal;
 		inputLevel = newVal.clip(0, 2);
