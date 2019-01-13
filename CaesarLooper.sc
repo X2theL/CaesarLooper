@@ -165,9 +165,15 @@ CaesarLooper {
 
 	replace { arg repl=true;
 		if ( repl ) {
-			inputSynth.set('pr_feedback', 0, 'inputLevel', 1);
+			server.makeBundle( nil, {
+				inputSynth.set('pr_feedback', 0, 'inputLevel', 1);
+				mixSynth.set( 'effectLevel', 0 );
+			})
 		} {
-			inputSynth.set('pr_feedback', 1, 'inputLevel', 0);
+			server.makeBundle( nil, {
+				inputSynth.set('pr_feedback', 1, 'inputLevel', 0);
+				mixSynth.set( 'effectLevel', effectLevel );
+			})
 		}
 	}
 
@@ -730,7 +736,7 @@ CaesarRead {
 
 	// checks if caesar is reversed
 	pr_offset {
-		var offset = ( caesar.delay * caesar.server.sampleRate * divisor ).round;
+		var offset = ( caesar.delay * caesar.server.sampleRate * caesar.pitch.midiratio * divisor ).round;
 		if (caesar.isReversed) {
 			offset = offset.neg;
 		};
