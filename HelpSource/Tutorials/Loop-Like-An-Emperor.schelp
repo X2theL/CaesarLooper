@@ -336,17 +336,17 @@ code::
 a.freeze
 ::
 
-Now you're safe to play with the fx:
+Now you're safe to play with the fx. There is a built in fx synth with a filter and some saturation capabilities. It's called "caesarfx". Let's try it.
 
 code::
+a.playFX('caesarfx');
+a.fxSynth.set('wet', 1);
 a.fxSynth.set('preGain', 8, 'postGain', 0.3, 'wet', 1)
 a.fxSynth.set('loDamp', -9)
 a.fxSynth.set('type', 1.8)
-a.fxSynth.set('wet', 0.3);
-a.fxSynth.set('wet', 1);
 ::
 
-If you now 'unfreeze' the loop the overdrive and the filter will be applied again and again each time the loop repeats.
+If you now 'unfreeze' the loop the overdrive and the filter will be applied again and again each time the loop repeats. Again: don't do this without taking precautions.
 
 code::
 a.freeze
@@ -359,6 +359,8 @@ a.fxSynth.set('wet', 0);
 // maybe you want to also clear it:
 a.clear
 ::
+
+You can load your own fx synths into the feedback loop using the playFX method. The new fx will replace the one currently playing. It just needs to have "in" and "out" arguments.
 
 Section::Syncing multiple loopers
 

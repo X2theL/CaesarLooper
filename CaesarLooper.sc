@@ -1,6 +1,5 @@
 // a reverse engineered version of the awesome vst plugin by Expert Sleepers
 // TODO:
-// - make hot-swappable fx
 // - preset system
 CaesarLooper {
 	classvar <all, <phasorGroup;
@@ -20,7 +19,7 @@ CaesarLooper {
 		^super.newCopyArgs ( maxDelay, target ).init( inputBus, outputBus );
 	}
 
-	init { arg in, out, smode, sgroup;
+	init { arg in, out;
 		all.add(this);
 		if (target.isNil) {
 			server = Server.default;
@@ -134,11 +133,13 @@ CaesarLooper {
 	// if there is already an fx synth
 	// it gets swapped for the new one
 	playFX { arg fx;
-		if ( fxSynth.isPlaying ) {
+		if ( fxSynth.isPlaying and: { fx.notNil } ) {
 			fxSynth.release;
 		};
 		if ( fx.notNil ) {
-			fxSynth = Synth( fx, [ 'in', fxBus, 'out', fxBus, 'wet', 0, 'tempo', this.tempo ], passthroughSynth, 'addAfter' );
+			fxSynth = Synth( fx,
+				[ 'in', fxBus, 'out', fxBus, 'wet', 0, 'tempo', this.tempo ],
+				passthroughSynth, 'addAfter' );
 			fxSynth.register
 		}
 	}
@@ -207,9 +208,9 @@ CaesarLooper {
 		this.changed(\pitchInertia); // notify reads
 	}
 
-	//
+	// lo: 0, hi: 0.5
 	delayInertiaFadeTime_ { arg newVal;
-		delayInertiaFadeTime = newVal.clip(0, 0.3);
+		delayInertiaFadeTime = newVal.clip(0, 0.5);
 		this.changed(\fade);
 	}
 
@@ -485,6 +486,7 @@ CaesarLooper {
 	}
 
 	free {
+		if ( isFrozen ) { this.pr_freezeReset };
 		reads.do(_.free);
 		looperGroup.free;
 		phasorSynth.free;

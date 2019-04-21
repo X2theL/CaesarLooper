@@ -23,8 +23,8 @@ Expects an audio rate Bus. If nil the first two system output channels are used.
 ARGUMENT:: maxDelay
 The size of the buffer and maximum possible loop length in seconds. Default is 30.
 
-ARGUMENT:: server
-If nil the default server is used
+ARGUMENT:: target
+A server group. If nil the default group of the default server is used.
 
 returns:: A new CaesarLooper instance
 
@@ -51,14 +51,17 @@ Get or set the level of the signal from globalInputBus.
 ARGUMENT:: newVal
 A float between 0 and 1
 
+METHOD:: mute
+Mute or unmute the looper output.
+
 METHOD:: masterFeedback
-Get or set level of the signal that is fed back into the loop. Levels from 0 to 1.3 are allowed. Be extremely careful with levels higher than 1. It will get loud!
+Get or set level of the signal that is fed back into the loop. Levels from 0 to 1.3 are allowed. Be extremely careful with levels higher than 1. It will get loud quickly! Use a limiter!
 
 ARGUMENT:: newVal
 A float between 0 and 1.3
 
 METHOD:: tapRecord
-Start and stop recording a loop.
+Start or stop recording a loop.
 
 METHOD:: isRecording
 Tells you if a loop is still being recorded
@@ -113,11 +116,14 @@ A boolean
 ARGUMENT:: changeDelay
 Same behavior as in the beats method: only changes the actual loop length if this is true
 
+METHOD:: tempo
+Get the tempo of the current loop
+
 METHOD:: tapeStop
 Stop the Phasor driving the buffer read and write synths, and thus "the tape". If you want a tape stop effect you need to adjust pitchInertia first.
 
 METHOD:: tapeStart
-"Restart the tape"
+Restart the tape
 
 METHOD:: pitchInertia
 Get or set the lag time for the phasor synth's rate argument. If delayInertia is set to true it also makes the read synth(s) "slide" to new positions for an additional tape-like effect.
@@ -132,7 +138,7 @@ METHOD:: delayInertiaFadeTime
 Get or set the time it takes for read synths to fade in or out when they are created or released.
 
 ARGUMENT:: newVal
-A float between 0 and 0.3
+A float between 0 and 0.5
 
 METHOD:: pitch
 Get or set the pitch of the loop, i.e., adjust the Phasor's rate.
@@ -152,6 +158,12 @@ Get or set the rate of the LFO
 ARGUMENT:: newVal
 A float between 0 and 20
 
+METHOD:: replace
+Punch into the loop and replace its audio
+
+ARGUMENT:: repl
+Boolan to indicate you are starting or stopping the punch in.
+
 METHOD:: reverse
 Reverse the tape
 
@@ -161,7 +173,7 @@ Check if the tape is reversed
 returns:: A boolean
 
 METHOD:: freeze
-	Cut input from globalInBus and feed the read synth back into the write synth and start a routine that reads from and writes to the same part of the buffer over and over again effectively creating a loop that won't change even if you engage the fx synth... in theory. In practice, this is likely to produce little clicks when switching back to normal mode. But if you embrace the glitches it can be put to good use in combination with the fx in the fx synth.
+	Cut input from globalInBus and feed the read synth back into the write synth and start a routine that reads from and writes to the same part of the buffer over and over again effectively creating a loop that you can change non-destructively using the fx synth... in theory. In practice, this is likely to produce little clicks when switching back to normal mode. But if you embrace the glitches it can be put to good use in combination with the fx in the fx synth.
 
 METHOD:: isFrozen
 Check if the loop is frozen
@@ -169,7 +181,7 @@ Check if the loop is frozen
 returns:: A boolean
 
 METHOD:: fade
-Fade the loop out or in
+Fade the loop out or back in
 
 METHOD:: fadeOverride
 If a fade is running this makes the volume jump to the destination volume (0 or 1) immediately
@@ -182,7 +194,6 @@ Get or set the time a fade out takes in seconds.
 
 METHOD:: fadeOutCompleteAction
 Three different behaviors are available: \none, which is the default, does nothing when the loop level reaches 0. \clear clears the loop and \clear2 clears the loop and sets the level back to 1.
-
 
 METHOD:: monoize
 Get or set the degree to which the input stereo signal is mixed to mono. Use this in combination with initialPan to send a panned signal to the buffer.
@@ -197,7 +208,7 @@ ARGUMENT:: newVal
 A float between -1 and 1.
 
 METHOD:: syncMode
-Get or set the mode in which the instance is operating in. If more than one instances are running, the sync mode affects the relationship of their respective delay times. If set to \none an instance is completely independent from any of the others. If one is set to \master then all other instances adjust their delay time to it the moment their sync mode is set to \slave and after that every time a tap recording of the master is performed.
+Get or set the mode in which the instance is operating in. If more than one instance is running, the sync mode affects the relationship of their respective delay times. If set to \none an instance is completely independent from any of the others. If one is set to \master then all other instances adjust their delay time to it the moment their sync mode is set to \slave and after that every time a tap recording of the master is performed.
 
 ARGUMENT:: newMode
 \none, \master or \slave. Default is \none.
@@ -218,7 +229,7 @@ METHOD:: addRead
 Add a new read synth to the looper which allows you to create "nested loops" for effects ranging from traditional tap delays to utter mayhem.
 
 ARGUMENT:: div
-A value between 0.001 and 1. 0.5 would create the read synth with exactly half the delay time.
+A value between 0.001 and 1. 0.5 creates a read synth with exactly half of the main delay time.
 
 ARGUMENT:: level
 A float between 0 and 1 that sets the output level.
@@ -241,7 +252,7 @@ METHOD:: clear
 Zeroes the buffer
 
 METHOD:: free
-	Frees the buffer and the synths (with the exception of the global phasorGroup) and
+Frees the buffer and the synths (with the exception of the global phasorGroup) and
 
 EXAMPLES::
 
