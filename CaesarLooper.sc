@@ -381,6 +381,7 @@ CaesarLooper {
 					this.pr_calcPhasePos(msg[3]);
 					isReversed = isReversed.not; // BEFORE new synths get rate and offset
 					this.pr_bundledMake;
+					this.changed(\isReversed, isReversed);
 					locked = false; // TODO: only safe when lock is released after phasor has reached new rate
 				}, '/n_end', argTemplate:[writeSynth.nodeID]).oneShot;
 				this.pr_bundledRelease;
@@ -403,7 +404,8 @@ CaesarLooper {
 				timeAtTapStart = thisThread.seconds;
 				isTapping = true;
 			}
-		}
+		};
+		this.changed(\isTapping, isTapping);
 	}
 
 	delay_ { arg newVal=1;
@@ -561,7 +563,7 @@ CaesarLooper {
 					RHPF.ar(fx, freq, q)
 				]);
 				fx = XFade2.ar(dry, fx, wet * 2 - 1);
-				Out.ar(out, fx);
+				ReplaceOut.ar(out, fx);
 			}).add;
 
 			SynthDef('caesarmix', {arg fxBus, globalOutBus=0, fadeBus, effectLevel=0.8, gate=1;
