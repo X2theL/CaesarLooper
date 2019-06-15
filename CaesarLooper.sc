@@ -564,7 +564,16 @@ CaesarLooper {
 				]);
 				fx = XFade2.ar(dry, fx, wet * 2 - 1);
 				ReplaceOut.ar(out, fx);
-			}).add;
+			}, metadata: (
+			specs: ( 'wet': [0, 1, 'lin', 0, 0.5].asSpec,
+				preGain: [0.1, 10, 'exp', 0, 1].asSpec,
+				postGain: [0.1, 1, 'exp', 0, 1].asSpec,
+				hiDamp: [-12, 12, 'lin', 0, 0].asSpec,
+				loDamp: [-12, 12, 'lin', 0, 0].asSpec,
+				freq: [60, 7000, 'exp', 0, 3000].asSpec,
+				q: [1, 0.1, 'lin', 0, 1].asSpec,
+				type: [0, 2, 'lin', 0, 0].asSpec
+			))).add;
 
 			SynthDef('caesarmix', {arg fxBus, globalOutBus=0, fadeBus, effectLevel=0.8, gate=1;
 				var input = In.ar(fxBus, 2);
