@@ -2,7 +2,7 @@
 // TODO:
 // - preset system
 CaesarLooper {
-	classvar <all, <phasorGroup, phasorRespawnCmdPeriodAdded = false;
+	classvar <all, <phasorGroup;
 
 	var <maxDelay, <target, <server, <syncMode=\none, <beats=4, <triplet=false;
 	var <buf, <looperGroup, <phasorBus, <globalInBus, <preAmpBus, <readBus, <fxBus, <globalOutBus, <fadeBus;
@@ -34,16 +34,6 @@ CaesarLooper {
 
 			if (phasorGroup.isNil,  {
 				phasorGroup = Group.new(server, 'addToHead'); // global phasor group
-
-                // If the user runs CmdPeriod, the global phasor group needs to be respawned
-                if(phasorRespawnCmdPeriodAdded.not, {
-
-                    ServerTree.add({
-                        phasorGroup = Group.new(server, 'addToHead')// global phasor group
-                    });
-
-                    phasorRespawnCmdPeriodAdded = true;
-                });
 			});
 
 
@@ -523,6 +513,13 @@ CaesarLooper {
 
 	*initClass {
 		all = IdentitySet.new;
+
+        // Make sure the phaserGroup variable is nil after cmd period so it can be automatically spawned by the next instance
+        CmdPeriod.add({
+            if (phasorGroup.isNil.not,  {
+                phasorGroup = nil;
+            })
+        });
 
 		ServerBoot.add({
 			// synth for initial panning, stereoization and feedback mixing
