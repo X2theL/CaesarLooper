@@ -2,7 +2,7 @@
 // TODO:
 // - preset system
 CaesarLooper {
-	classvar <all, <phasorGroup;
+	classvar <all, <phasorGroup, phasorRespawnCmdPeriodAdded = false;
 
 	var <maxDelay, <target, <server, <syncMode=\none, <beats=4, <triplet=false;
 	var <buf, <looperGroup, <phasorBus, <globalInBus, <preAmpBus, <readBus, <fxBus, <globalOutBus, <fadeBus;
@@ -31,9 +31,22 @@ CaesarLooper {
 		fork {
 			server.sync;
 			buf = Buffer.alloc(server, server.sampleRate * maxDelay, 2);
-			if (phasorGroup.isNil) {
+
+			if (phasorGroup.isNil,  {
 				phasorGroup = Group.new(server, 'addToHead'); // global phasor group
-			};
+
+                // If the user runs CmdPeriod, the global phasor group needs to be respawned
+                if(phasorRespawnCmdPeriodAdded.not, {
+
+                    ServerTree.add({
+                        phasorGroup = Group.new(server, 'addToHead')// global phasor group
+                    });
+
+                    phasorRespawnCmdPeriodAdded = true;
+                });
+			});
+
+
 			looperGroup = Group.new(target, 'addToTail'); // always at the bottom
 			phasorBus = Bus.audio(server, 2);
 			globalInBus = in ?? { Bus.new('audio', server.options.numOutputBusChannels, 2, server) }; // default: hardware in 0,1
