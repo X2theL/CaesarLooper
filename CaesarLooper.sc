@@ -29,6 +29,7 @@ CaesarLooper {
 		};
 		reads = List.new;
 		fork {
+			server.sync;
 			buf = Buffer.alloc(server, server.sampleRate * maxDelay, 2);
 			if (phasorGroup.isNil) {
 				phasorGroup = Group.new(server, 'addToHead'); // global phasor group
