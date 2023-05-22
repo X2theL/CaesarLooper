@@ -154,7 +154,7 @@ CaesarLooper {
 	// set global input bus
 	globalInBus_ { arg newBus;
 		globalInBus = newBus;
-		inputSynth.set('inBus', globalOutBus);
+		inputSynth.set('inBus', globalInBus);
 	}
 
 	// lo: 0, hi: 1.3
@@ -269,7 +269,7 @@ CaesarLooper {
 	// create a one shot trigger synth and OSCFunc that activates tapRec
 	armAutoRec {
 		if ( isTriggering.not ) {
-			triggerSynth = Synth('caesartrigger', ['thresh', triggerLevel], inputSynth, 'addAfter');
+			triggerSynth = Synth('caesartrigger', ['inBus', globalInBus, 'thresh', triggerLevel], inputSynth, 'addAfter');
 			triggerOSCFunc = OSCFunc({arg msg;
 				"recording started".postln;
 				if ( isRecording.not ) { this.tapRecord };
@@ -582,9 +582,9 @@ CaesarLooper {
 				Out.ar(globalOutBus, sig);
 			}).add;
 
-			SynthDef('caesartrigger', { arg preampBus, thresh=0.4;
+			SynthDef('caesartrigger', { arg inBus, thresh=0.4;
 				var amp, trig;
-				amp = Amplitude.kr( Mix.new( In.ar(preampBus, 2) ), 0.01, 0.1 );
+				amp = Amplitude.kr( Mix.new( In.ar(inBus, 2) ), 0.01, 0.1 );
 				trig = amp > thresh;
 				Linen.kr(trig, 0.01, 1, 0.01, doneAction:2);
 				SendTrig.kr(Gate.kr(trig, trig), 235, 1);
