@@ -3,7 +3,7 @@
 	\summary:		"A clone of the Augustus Loop VST plugin",
 	\author:			"Axel Baesler",
 	\url:				"https://baesler.eu",
-	\version:			"1.2.0",
+	\version:			"1.2.1",
 	\isCompatible:		{Main.versionAtLeast(3, 8)},
 	\ext_dependancy:	"The IBufWr UGen: https://github.com/tremblap/IBufWr"
 )
