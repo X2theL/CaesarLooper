@@ -29,10 +29,14 @@ CaesarLooper {
 		};
 		reads = List.new;
 		fork {
+			server.sync;
 			buf = Buffer.alloc(server, server.sampleRate * maxDelay, 2);
-			if (phasorGroup.isNil) {
+
+			if (phasorGroup.isNil,  {
 				phasorGroup = Group.new(server, 'addToHead'); // global phasor group
-			};
+			});
+
+
 			looperGroup = Group.new(target, 'addToTail'); // always at the bottom
 			phasorBus = Bus.audio(server, 2);
 			globalInBus = in ?? { Bus.new('audio', server.options.numOutputBusChannels, 2, server) }; // default: hardware in 0,1
@@ -509,6 +513,13 @@ CaesarLooper {
 
 	*initClass {
 		all = IdentitySet.new;
+
+        // Make sure the phaserGroup variable is nil after cmd period so it can be automatically spawned by the next instance
+        CmdPeriod.add({
+            if (phasorGroup.isNil.not,  {
+                phasorGroup = nil;
+            })
+        });
 
 		ServerBoot.add({
 			// synth for initial panning, stereoization and feedback mixing
